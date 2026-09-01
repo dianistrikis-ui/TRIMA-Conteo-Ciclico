@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TRIMA - Prueba de Escáner</title>
+
+  <title>TRIMA - Diagnóstico Cámara</title>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
@@ -11,49 +12,66 @@
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 24px;
+      padding: 20px;
       background: #f4f6f8;
       text-align: center;
     }
 
     .card {
       max-width: 500px;
-      margin: 0 auto;
+      margin: auto;
       background: white;
-      padding: 24px;
+      padding: 22px;
       border-radius: 16px;
       box-shadow: 0 4px 16px rgba(0,0,0,.12);
     }
 
     h1 {
-      margin-bottom: 8px;
+      margin-bottom: 5px;
+    }
+
+    select,
+    button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 15px;
+      margin-top: 12px;
+      border-radius: 10px;
+      font-size: 17px;
+    }
+
+    select {
+      border: 1px solid #ccc;
+      background: white;
     }
 
     button {
-      width: 100%;
-      padding: 16px;
       border: none;
-      border-radius: 10px;
       background: #1565c0;
       color: white;
-      font-size: 18px;
       font-weight: bold;
       cursor: pointer;
-      margin-top: 15px;
     }
 
     #reader {
       width: 100%;
-      margin-top: 20px;
+      margin-top: 18px;
     }
 
     #resultado {
-      margin-top: 20px;
+      margin-top: 18px;
       padding: 15px;
-      border-radius: 10px;
       background: #eeeeee;
-      font-size: 18px;
+      border-radius: 10px;
+      font-size: 17px;
       word-break: break-word;
+    }
+
+    #info {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #555;
+      text-align: left;
     }
   </style>
 </head>
@@ -63,123 +81,299 @@
 <div class="card">
 
   <h1>TRIMA</h1>
-  <p>Prueba de lector de código de barras</p>
+  <p>Diagnóstico de cámara</p>
+
+  <button onclick="detectarCamaras()">
+    📷 DETECTAR CÁMARAS
+  </button>
+
+  <select id="listaCamaras">
+    <option value="">
+      Primero detecta las cámaras
+    </option>
+  </select>
 
   <button onclick="iniciarScanner()">
-    📷 ABRIR CÁMARA
+    🔎 USAR CÁMARA SELECCIONADA
   </button>
 
   <div id="reader"></div>
 
   <div id="resultado">
-    Esperando código...
+    Esperando...
   </div>
 
+  <div id="info"></div>
+
 </div>
+
 
 <script>
 
 let scanner = null;
+let scannerActivo = false;
 let procesado = false;
 
+
 const formatosTRIMA = [
+
   Html5QrcodeSupportedFormats.EAN_13,
   Html5QrcodeSupportedFormats.EAN_8,
   Html5QrcodeSupportedFormats.UPC_A,
   Html5QrcodeSupportedFormats.UPC_E,
   Html5QrcodeSupportedFormats.CODE_128,
   Html5QrcodeSupportedFormats.CODE_39
+
 ];
 
-function iniciarScanner() {
 
-  const resultado = document.getElementById("resultado");
+function detectarCamaras() {
+
+  const resultado =
+    document.getElementById("resultado");
+
+  const lista =
+    document.getElementById("listaCamaras");
+
+  const info =
+    document.getElementById("info");
+
 
   resultado.innerHTML =
-    "Solicitando acceso a la cámara...";
+    "Solicitando acceso a las cámaras...";
 
-  procesado = false;
 
-  scanner = new Html5Qrcode(
-    "reader",
-    {
-      formatsToSupport: formatosTRIMA,
-      verbose: false
-    }
-  );
+  Html5Qrcode.getCameras()
 
-  const configuracion = {
-    fps: 15,
+  .then(function(camaras) {
 
-    qrbox: function(width, height) {
+    lista.innerHTML = "";
 
-      const ancho =
-        Math.floor(width * 0.90);
-
-      const alto =
-        Math.floor(height * 0.30);
-
-      return {
-        width: ancho,
-        height: alto
-      };
-    },
-
-    aspectRatio: 1.777778
-  };
-
-  scanner.start(
-
-    { facingMode: "environment" },
-
-    configuracion,
-
-    function(codigoDetectado, decodedResult) {
-
-      if (procesado) return;
-
-      procesado = true;
+    if (!camaras || camaras.length === 0) {
 
       resultado.innerHTML =
-        "✅ <strong>CÓDIGO DETECTADO</strong><br><br>" +
-        codigoDetectado;
+        "❌ No se encontraron cámaras.";
 
-      if (decodedResult &&
-          decodedResult.result &&
-          decodedResult.result.format) {
-
-        resultado.innerHTML +=
-          "<br><br>Formato: " +
-          decodedResult.result.format.formatName;
-      }
-
-      scanner.stop()
-        .then(function() {
-          scanner.clear();
-        })
-        .catch(function() {});
-
-    },
-
-    function(errorLectura) {
-      // Es normal recibir errores mientras
-      // todavía no hay un código enfocado.
+      return;
     }
 
-  )
 
-  .then(function() {
+    camaras.forEach(function(camara, indice) {
+
+      const opcion =
+        document.createElement("option");
+
+      opcion.value = camara.id;
+
+      opcion.textContent =
+        (indice + 1) +
+        " - " +
+        (camara.label || "Cámara");
+
+      lista.appendChild(opcion);
+
+    });
+
 
     resultado.innerHTML =
-      "📷 <strong>Cámara lista</strong><br>" +
-      "Apunta al código de barras";
+      "✅ <strong>" +
+      camaras.length +
+      " cámara(s) encontrada(s)</strong><br>" +
+      "Selecciona una cámara.";
+
+    info.innerHTML =
+      "Cámaras detectadas:<br><br>" +
+      camaras.map(function(camara, indice) {
+
+        return (indice + 1) +
+          ". " +
+          (camara.label || "Sin nombre");
+
+      }).join("<br>");
 
   })
 
   .catch(function(error) {
 
     resultado.innerHTML =
-      "❌ <strong>ERROR DE CÁMARA</strong><br><br>" +
+      "❌ <strong>Error al detectar cámaras</strong><br><br>" +
+      String(error);
+
+  });
+
+}
+
+
+
+function iniciarScanner() {
+
+  const resultado =
+    document.getElementById("resultado");
+
+  const lista =
+    document.getElementById("listaCamaras");
+
+  const cameraId =
+    lista.value;
+
+
+  if (!cameraId) {
+
+    resultado.innerHTML =
+      "Primero pulsa DETECTAR CÁMARAS.";
+
+    return;
+
+  }
+
+
+  if (scannerActivo && scanner) {
+
+    scanner.stop()
+      .then(function() {
+
+        scanner.clear();
+
+        scannerActivo = false;
+
+        abrirCamara(cameraId);
+
+      })
+      .catch(function() {
+
+        scannerActivo = false;
+
+        abrirCamara(cameraId);
+
+      });
+
+  } else {
+
+    abrirCamara(cameraId);
+
+  }
+
+}
+
+
+
+function abrirCamara(cameraId) {
+
+  const resultado =
+    document.getElementById("resultado");
+
+
+  procesado = false;
+
+
+  scanner =
+    new Html5Qrcode(
+      "reader",
+      {
+        formatsToSupport: formatosTRIMA,
+        verbose: false
+      }
+    );
+
+
+  const configuracion = {
+
+    fps: 15,
+
+    qrbox: function(width, height) {
+
+      return {
+
+        width:
+          Math.floor(width * 0.92),
+
+        height:
+          Math.floor(height * 0.32)
+
+      };
+
+    },
+
+    aspectRatio: 1.777778
+
+  };
+
+
+  resultado.innerHTML =
+    "Abriendo cámara seleccionada...";
+
+
+  scanner.start(
+
+    cameraId,
+
+    configuracion,
+
+    function(codigo, decodedResult) {
+
+      if (procesado) return;
+
+      procesado = true;
+
+
+      resultado.innerHTML =
+        "✅ <strong>CÓDIGO DETECTADO</strong>" +
+        "<br><br>" +
+        codigo;
+
+
+      if (
+        decodedResult &&
+        decodedResult.result &&
+        decodedResult.result.format
+      ) {
+
+        resultado.innerHTML +=
+          "<br><br>Formato: " +
+          decodedResult.result.format.formatName;
+
+      }
+
+
+      scanner.stop()
+
+      .then(function() {
+
+        scannerActivo = false;
+        scanner.clear();
+
+      })
+
+      .catch(function() {});
+
+    },
+
+
+    function(errorLectura) {
+
+      // Normal mientras busca un código.
+
+    }
+
+  )
+
+  .then(function() {
+
+    scannerActivo = true;
+
+    resultado.innerHTML =
+      "📷 <strong>Cámara activa</strong><br>" +
+      "Comprueba primero si la imagen está enfocada.";
+
+  })
+
+  .catch(function(error) {
+
+    scannerActivo = false;
+
+    resultado.innerHTML =
+      "❌ <strong>Error al abrir cámara</strong>" +
+      "<br><br>" +
       String(error);
 
   });
