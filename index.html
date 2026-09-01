@@ -2,9 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>TRIMA - Diagnóstico Cámara</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>TRIMA - Lector de Código de Barras</title>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
@@ -19,7 +18,7 @@
 
     .card {
       max-width: 500px;
-      margin: auto;
+      margin: 0 auto;
       background: white;
       padding: 22px;
       border-radius: 16px;
@@ -27,247 +26,247 @@
     }
 
     h1 {
-      margin-bottom: 5px;
+      margin: 5px 0;
+      font-size: 34px;
     }
 
-    select,
+    .subtitulo {
+      font-size: 20px;
+      margin: 8px 0 22px;
+    }
+
     button {
       width: 100%;
-      box-sizing: border-box;
-      padding: 15px;
-      margin-top: 12px;
-      border-radius: 10px;
-      font-size: 17px;
-    }
-
-    select {
-      border: 1px solid #ccc;
-      background: white;
-    }
-
-    button {
-      border: none;
-      background: #1565c0;
+      padding: 18px;
+      margin: 8px 0 18px;
+      border: 0;
+      border-radius: 12px;
+      background: #1769c2;
       color: white;
+      font-size: 21px;
       font-weight: bold;
       cursor: pointer;
     }
 
+    button:disabled {
+      opacity: .6;
+    }
+
     #reader {
       width: 100%;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+
+    #reader video {
+      width: 100% !important;
+      object-fit: cover;
+    }
+
+    #estado {
       margin-top: 18px;
+      padding: 16px;
+      border-radius: 12px;
+      background: #f1f1f1;
+      font-size: 18px;
+      line-height: 1.45;
     }
 
     #resultado {
+      display: none;
       margin-top: 18px;
-      padding: 15px;
-      background: #eeeeee;
-      border-radius: 10px;
-      font-size: 17px;
-      word-break: break-word;
+      padding: 20px;
+      border-radius: 12px;
+      background: #e7f7eb;
+      font-size: 18px;
     }
 
-    #info {
-      margin-top: 12px;
-      font-size: 14px;
+    #codigoDetectado {
+      display: block;
+      margin-top: 8px;
+      font-size: 28px;
+      font-weight: bold;
+      word-break: break-all;
+    }
+
+    .marcoTexto {
+      margin: 10px 0;
+      font-size: 15px;
       color: #555;
-      text-align: left;
     }
   </style>
 </head>
 
 <body>
 
-<div class="card">
+  <div class="card">
 
-  <h1>TRIMA</h1>
-  <p>Diagnóstico de cámara</p>
+    <h1>TRIMA</h1>
 
-  <button onclick="detectarCamaras()">
-    📷 DETECTAR CÁMARAS
-  </button>
+    <div class="subtitulo">
+      Lector de código de barras
+    </div>
 
-  <select id="listaCamaras">
-    <option value="">
-      Primero detecta las cámaras
-    </option>
-  </select>
+    <button id="btnCamara" onclick="abrirCamara()">
+      📷 ESCANEAR CÓDIGO
+    </button>
 
-  <button onclick="iniciarScanner()">
-    🔎 USAR CÁMARA SELECCIONADA
-  </button>
+    <div class="marcoTexto">
+      Coloca el código de barras dentro del área de lectura.
+    </div>
 
-  <div id="reader"></div>
+    <div id="reader"></div>
 
-  <div id="resultado">
-    Esperando...
+    <div id="estado">
+      Listo para escanear.
+    </div>
+
+    <div id="resultado">
+      ✅ <strong>CÓDIGO DETECTADO</strong>
+      <span id="codigoDetectado"></span>
+    </div>
+
   </div>
-
-  <div id="info"></div>
-
-</div>
-
 
 <script>
 
 let scanner = null;
 let scannerActivo = false;
-let procesado = false;
+let codigoProcesado = false;
 
+
+/* =========================================================
+   FORMATOS QUE NOS INTERESAN
+   ========================================================= */
 
 const formatosTRIMA = [
-
   Html5QrcodeSupportedFormats.EAN_13,
   Html5QrcodeSupportedFormats.EAN_8,
   Html5QrcodeSupportedFormats.UPC_A,
   Html5QrcodeSupportedFormats.UPC_E,
   Html5QrcodeSupportedFormats.CODE_128,
-  Html5QrcodeSupportedFormats.CODE_39
-
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.CODE_93,
+  Html5QrcodeSupportedFormats.ITF,
+  Html5QrcodeSupportedFormats.CODABAR
 ];
 
 
-function detectarCamaras() {
+/* =========================================================
+   ABRIR CÁMARA
+   ========================================================= */
 
-  const resultado =
-    document.getElementById("resultado");
+async function abrirCamara() {
 
-  const lista =
-    document.getElementById("listaCamaras");
+  const estado = document.getElementById("estado");
+  const boton = document.getElementById("btnCamara");
+  const resultado = document.getElementById("resultado");
 
-  const info =
-    document.getElementById("info");
+  if (scannerActivo) {
+    return;
+  }
 
+  boton.disabled = true;
+  resultado.style.display = "none";
 
-  resultado.innerHTML =
-    "Solicitando acceso a las cámaras...";
+  codigoProcesado = false;
 
+  estado.innerHTML =
+    "🔎 <strong>Preparando lector...</strong><br>" +
+    "Buscando automáticamente la mejor cámara trasera.";
 
-  Html5Qrcode.getCameras()
+  try {
 
-  .then(function(camaras) {
+    /* -----------------------------------------
+       1. PEDIMOS PERMISO Y OBTENEMOS CÁMARAS
+       ----------------------------------------- */
 
-    lista.innerHTML = "";
+    const cameras = await Html5Qrcode.getCameras();
 
-    if (!camaras || camaras.length === 0) {
-
-      resultado.innerHTML =
-        "❌ No se encontraron cámaras.";
-
-      return;
+    if (!cameras || cameras.length === 0) {
+      throw new Error("No se encontraron cámaras disponibles.");
     }
 
 
-    camaras.forEach(function(camara, indice) {
+    /* -----------------------------------------
+       2. BUSCAMOS UNA CÁMARA TRASERA
+       ----------------------------------------- */
 
-      const opcion =
-        document.createElement("option");
+    let camarasTraseras = cameras.filter(function(cam) {
 
-      opcion.value = camara.id;
+      const nombre = String(cam.label || "").toLowerCase();
 
-      opcion.textContent =
-        (indice + 1) +
-        " - " +
-        (camara.label || "Cámara");
-
-      lista.appendChild(opcion);
+      return (
+        nombre.includes("back") ||
+        nombre.includes("rear") ||
+        nombre.includes("environment") ||
+        nombre.includes("trasera") ||
+        nombre.includes("ultra") ||
+        nombre.includes("wide")
+      );
 
     });
 
 
-    resultado.innerHTML =
-      "✅ <strong>" +
-      camaras.length +
-      " cámara(s) encontrada(s)</strong><br>" +
-      "Selecciona una cámara.";
+    /*
+      Si Safari no proporciona nombres útiles,
+      utilizamos las cámaras disponibles como respaldo.
+    */
 
-    info.innerHTML =
-      "Cámaras detectadas:<br><br>" +
-      camaras.map(function(camara, indice) {
-
-        return (indice + 1) +
-          ". " +
-          (camara.label || "Sin nombre");
-
-      }).join("<br>");
-
-  })
-
-  .catch(function(error) {
-
-    resultado.innerHTML =
-      "❌ <strong>Error al detectar cámaras</strong><br><br>" +
-      String(error);
-
-  });
-
-}
+    if (camarasTraseras.length === 0) {
+      camarasTraseras = cameras;
+    }
 
 
+    /* -----------------------------------------
+       3. PRIORIZAMOS CÁMARAS ÚTILES PARA
+          LECTURA CERCANA
+       ----------------------------------------- */
 
-function iniciarScanner() {
+    function puntajeCamara(cam) {
 
-  const resultado =
-    document.getElementById("resultado");
+      const nombre = String(cam.label || "").toLowerCase();
 
-  const lista =
-    document.getElementById("listaCamaras");
+      let puntos = 0;
 
-  const cameraId =
-    lista.value;
+      if (nombre.includes("back")) puntos += 30;
+      if (nombre.includes("rear")) puntos += 30;
+      if (nombre.includes("environment")) puntos += 30;
 
+      /*
+        En nuestras pruebas el Ultra Wide del iPhone
+        funciona bien a corta distancia.
+      */
 
-  if (!cameraId) {
+      if (nombre.includes("ultra")) puntos += 50;
+      if (nombre.includes("0.5")) puntos += 50;
 
-    resultado.innerHTML =
-      "Primero pulsa DETECTAR CÁMARAS.";
+      if (nombre.includes("wide")) puntos += 20;
 
-    return;
+      /*
+        Penalizamos cámara frontal.
+      */
 
-  }
+      if (nombre.includes("front")) puntos -= 100;
+      if (nombre.includes("user")) puntos -= 100;
 
-
-  if (scannerActivo && scanner) {
-
-    scanner.stop()
-      .then(function() {
-
-        scanner.clear();
-
-        scannerActivo = false;
-
-        abrirCamara(cameraId);
-
-      })
-      .catch(function() {
-
-        scannerActivo = false;
-
-        abrirCamara(cameraId);
-
-      });
-
-  } else {
-
-    abrirCamara(cameraId);
-
-  }
-
-}
+      return puntos;
+    }
 
 
-
-function abrirCamara(cameraId) {
-
-  const resultado =
-    document.getElementById("resultado");
+    camarasTraseras.sort(function(a, b) {
+      return puntajeCamara(b) - puntajeCamara(a);
+    });
 
 
-  procesado = false;
+    const camaraElegida = camarasTraseras[0];
 
 
-  scanner =
-    new Html5Qrcode(
+    /* -----------------------------------------
+       4. CREAMOS EL LECTOR
+       ----------------------------------------- */
+
+    scanner = new Html5Qrcode(
       "reader",
       {
         formatsToSupport: formatosTRIMA,
@@ -276,108 +275,251 @@ function abrirCamara(cameraId) {
     );
 
 
-  const configuracion = {
+    const configuracion = {
 
-    fps: 15,
+      fps: 15,
 
-    qrbox: function(width, height) {
+      qrbox: function(viewfinderWidth, viewfinderHeight) {
 
-      return {
+        /*
+          Área horizontal grande para códigos de barras.
+        */
 
-        width:
-          Math.floor(width * 0.92),
+        const width =
+          Math.floor(viewfinderWidth * 0.90);
 
-        height:
-          Math.floor(height * 0.32)
+        const height =
+          Math.min(
+            Math.floor(viewfinderHeight * 0.35),
+            220
+          );
 
-      };
+        return {
+          width: width,
+          height: height
+        };
+      },
 
-    },
+      /*
+        Esta opción permite utilizar capacidades
+        experimentales del navegador cuando existan.
+      */
 
-    aspectRatio: 1.777778
-
-  };
-
-
-  resultado.innerHTML =
-    "Abriendo cámara seleccionada...";
-
-
-  scanner.start(
-
-    cameraId,
-
-    configuracion,
-
-    function(codigo, decodedResult) {
-
-      if (procesado) return;
-
-      procesado = true;
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true
+      }
+    };
 
 
-      resultado.innerHTML =
-        "✅ <strong>CÓDIGO DETECTADO</strong>" +
-        "<br><br>" +
-        codigo;
+    /* -----------------------------------------
+       5. INICIAMOS LA CÁMARA ELEGIDA
+       ----------------------------------------- */
 
+    await scanner.start(
 
-      if (
-        decodedResult &&
-        decodedResult.result &&
-        decodedResult.result.format
-      ) {
+      camaraElegida.id,
 
-        resultado.innerHTML +=
-          "<br><br>Formato: " +
-          decodedResult.result.format.formatName;
+      configuracion,
+
+      function(codigo, decodedResult) {
+
+        codigoLeido(codigo, decodedResult);
+
+      },
+
+      function(errorLectura) {
+
+        /*
+          Estos errores son normales mientras
+          todavía no encuentra un código.
+        */
 
       }
 
+    );
 
-      scanner.stop()
-
-      .then(function() {
-
-        scannerActivo = false;
-        scanner.clear();
-
-      })
-
-      .catch(function() {});
-
-    },
-
-
-    function(errorLectura) {
-
-      // Normal mientras busca un código.
-
-    }
-
-  )
-
-  .then(function() {
 
     scannerActivo = true;
 
-    resultado.innerHTML =
+    boton.disabled = false;
+
+    estado.innerHTML =
       "📷 <strong>Cámara activa</strong><br>" +
-      "Comprueba primero si la imagen está enfocada.";
+      "Acerca o aleja lentamente el producto.<br>" +
+      "La lectura es automática.";
 
-  })
 
-  .catch(function(error) {
+    /* -----------------------------------------
+       6. INTENTAMOS ACTIVAR ENFOQUE CONTINUO
+          SI EL IPHONE LO PERMITE
+       ----------------------------------------- */
+
+    intentarEnfoqueContinuo();
+
+
+  } catch(error) {
 
     scannerActivo = false;
+    boton.disabled = false;
 
-    resultado.innerHTML =
-      "❌ <strong>Error al abrir cámara</strong>" +
-      "<br><br>" +
+    estado.innerHTML =
+      "❌ <strong>No fue posible iniciar el lector.</strong><br><br>" +
       String(error);
 
-  });
+    console.error(error);
+  }
+}
 
+
+/* =========================================================
+   INTENTAR AUTOFOCUS
+   ========================================================= */
+
+async function intentarEnfoqueContinuo() {
+
+  try {
+
+    const video =
+      document.querySelector("#reader video");
+
+    if (!video || !video.srcObject) {
+      return;
+    }
+
+    const tracks =
+      video.srcObject.getVideoTracks();
+
+    if (!tracks.length) {
+      return;
+    }
+
+    const track = tracks[0];
+
+    const capabilities =
+      track.getCapabilities
+        ? track.getCapabilities()
+        : {};
+
+
+    /*
+      Algunos dispositivos permiten pedir
+      enfoque continuo desde el navegador.
+    */
+
+    if (
+      capabilities.focusMode &&
+      capabilities.focusMode.includes("continuous")
+    ) {
+
+      await track.applyConstraints({
+        advanced: [
+          {
+            focusMode: "continuous"
+          }
+        ]
+      });
+
+    }
+
+  } catch(error) {
+
+    /*
+      No es un error crítico.
+      Si Safari no lo admite simplemente continúa.
+    */
+
+    console.log(
+      "Enfoque automático no disponible:",
+      error
+    );
+  }
+}
+
+
+/* =========================================================
+   CUANDO DETECTA UN CÓDIGO
+   ========================================================= */
+
+function codigoLeido(codigo, decodedResult) {
+
+  if (codigoProcesado) {
+    return;
+  }
+
+  codigoProcesado = true;
+
+  const estado =
+    document.getElementById("estado");
+
+  const resultado =
+    document.getElementById("resultado");
+
+  const codigoElemento =
+    document.getElementById("codigoDetectado");
+
+
+  codigoElemento.textContent = codigo;
+
+  resultado.style.display = "block";
+
+  estado.innerHTML =
+    "🎯 <strong>Lectura realizada correctamente.</strong>";
+
+
+  /*
+    Vibración corta como confirmación
+    cuando el iPhone/navegador lo permita.
+  */
+
+  try {
+
+    if (navigator.vibrate) {
+      navigator.vibrate(120);
+    }
+
+  } catch(error) {}
+
+
+  /* Cerramos la cámara después de leer */
+
+  detenerScanner();
+
+}
+
+
+/* =========================================================
+   DETENER LECTOR
+   ========================================================= */
+
+async function detenerScanner() {
+
+  if (!scanner) {
+    scannerActivo = false;
+    return;
+  }
+
+  try {
+
+    if (scannerActivo) {
+      await scanner.stop();
+    }
+
+  } catch(error) {
+
+    console.log(error);
+
+  }
+
+  try {
+
+    await scanner.clear();
+
+  } catch(error) {}
+
+
+  scannerActivo = false;
+
+  document.getElementById("btnCamara").disabled = false;
 }
 
 </script>
