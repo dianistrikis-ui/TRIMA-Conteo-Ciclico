@@ -2,10 +2,13 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>TRIMA - Lector de Código de Barras</title>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
 
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <title>TRIMA - Prueba ZXing</title>
+
+  <!-- MOTOR ZXING -->
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
 
   <style>
     body {
@@ -18,435 +21,118 @@
 
     .card {
       max-width: 500px;
-      margin: 0 auto;
-      background: white;
+      margin: auto;
       padding: 22px;
+      background: white;
       border-radius: 16px;
       box-shadow: 0 4px 16px rgba(0,0,0,.12);
     }
 
     h1 {
-      margin: 5px 0;
-      font-size: 34px;
-    }
-
-    .subtitulo {
-      font-size: 20px;
-      margin: 8px 0 22px;
+      margin-bottom: 5px;
     }
 
     button {
       width: 100%;
-      padding: 18px;
-      margin: 8px 0 18px;
-      border: 0;
+      padding: 17px;
+      margin: 15px 0;
+      border: none;
       border-radius: 12px;
       background: #1769c2;
       color: white;
-      font-size: 21px;
+      font-size: 19px;
       font-weight: bold;
-      cursor: pointer;
     }
 
-    button:disabled {
-      opacity: .6;
-    }
-
-    #reader {
+    .visor {
+      position: relative;
       width: 100%;
       overflow: hidden;
       border-radius: 12px;
+      background: black;
     }
 
-    #reader video {
-      width: 100% !important;
-      object-fit: cover;
+    video {
+      width: 100%;
+      display: block;
+    }
+
+    .linea {
+      position: absolute;
+      left: 7%;
+      right: 7%;
+      top: 50%;
+      height: 3px;
+      background: red;
     }
 
     #estado {
-      margin-top: 18px;
-      padding: 16px;
-      border-radius: 12px;
-      background: #f1f1f1;
-      font-size: 18px;
-      line-height: 1.45;
+      margin-top: 16px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #eeeeee;
+      font-size: 17px;
     }
 
     #resultado {
       display: none;
-      margin-top: 18px;
+      margin-top: 16px;
       padding: 20px;
-      border-radius: 12px;
-      background: #e7f7eb;
-      font-size: 18px;
+      border-radius: 10px;
+      background: #e6f6ea;
     }
 
-    #codigoDetectado {
+    #codigo {
       display: block;
-      margin-top: 8px;
+      margin-top: 10px;
       font-size: 28px;
       font-weight: bold;
       word-break: break-all;
-    }
-
-    .marcoTexto {
-      margin: 10px 0;
-      font-size: 15px;
-      color: #555;
     }
   </style>
 </head>
 
 <body>
 
-  <div class="card">
+<div class="card">
 
-    <h1>TRIMA</h1>
+  <h1>TRIMA</h1>
 
-    <div class="subtitulo">
-      Lector de código de barras
-    </div>
+  <p>Prueba ZXing — Código de barras</p>
 
-    <button id="btnCamara" onclick="abrirCamara()">
-      📷 ESCANEAR CÓDIGO
-    </button>
+  <button onclick="iniciar()">
+    📷 ESCANEAR CÓDIGO
+  </button>
 
-    <div class="marcoTexto">
-      Coloca el código de barras dentro del área de lectura.
-    </div>
+  <div class="visor">
+    <video id="video"
+           autoplay
+           muted
+           playsinline>
+    </video>
 
-    <div id="reader"></div>
-
-    <div id="estado">
-      Listo para escanear.
-    </div>
-
-    <div id="resultado">
-      ✅ <strong>CÓDIGO DETECTADO</strong>
-      <span id="codigoDetectado"></span>
-    </div>
-
+    <div class="linea"></div>
   </div>
+
+  <div id="estado">
+    Listo para escanear.
+  </div>
+
+  <div id="resultado">
+    ✅ <strong>CÓDIGO DETECTADO</strong>
+    <span id="codigo"></span>
+  </div>
+
+</div>
+
 
 <script>
 
-let scanner = null;
-let scannerActivo = false;
-let codigoProcesado = false;
+let controles = null;
+let detectado = false;
 
 
-/* =========================================================
-   FORMATOS QUE NOS INTERESAN
-   ========================================================= */
-
-const formatosTRIMA = [
-  Html5QrcodeSupportedFormats.EAN_13,
-  Html5QrcodeSupportedFormats.EAN_8,
-  Html5QrcodeSupportedFormats.UPC_A,
-  Html5QrcodeSupportedFormats.UPC_E,
-  Html5QrcodeSupportedFormats.CODE_128,
-  Html5QrcodeSupportedFormats.CODE_39,
-  Html5QrcodeSupportedFormats.CODE_93,
-  Html5QrcodeSupportedFormats.ITF,
-  Html5QrcodeSupportedFormats.CODABAR
-];
-
-
-/* =========================================================
-   ABRIR CÁMARA
-   ========================================================= */
-
-async function abrirCamara() {
-
-  const estado = document.getElementById("estado");
-  const boton = document.getElementById("btnCamara");
-  const resultado = document.getElementById("resultado");
-
-  if (scannerActivo) {
-    return;
-  }
-
-  boton.disabled = true;
-  resultado.style.display = "none";
-
-  codigoProcesado = false;
-
-  estado.innerHTML =
-    "🔎 <strong>Preparando lector...</strong><br>" +
-    "Buscando automáticamente la mejor cámara trasera.";
-
-  try {
-
-    /* -----------------------------------------
-       1. PEDIMOS PERMISO Y OBTENEMOS CÁMARAS
-       ----------------------------------------- */
-
-    const cameras = await Html5Qrcode.getCameras();
-
-    if (!cameras || cameras.length === 0) {
-      throw new Error("No se encontraron cámaras disponibles.");
-    }
-
-
-    /* -----------------------------------------
-       2. BUSCAMOS UNA CÁMARA TRASERA
-       ----------------------------------------- */
-
-    let camarasTraseras = cameras.filter(function(cam) {
-
-      const nombre = String(cam.label || "").toLowerCase();
-
-      return (
-        nombre.includes("back") ||
-        nombre.includes("rear") ||
-        nombre.includes("environment") ||
-        nombre.includes("trasera") ||
-        nombre.includes("ultra") ||
-        nombre.includes("wide")
-      );
-
-    });
-
-
-    /*
-      Si Safari no proporciona nombres útiles,
-      utilizamos las cámaras disponibles como respaldo.
-    */
-
-    if (camarasTraseras.length === 0) {
-      camarasTraseras = cameras;
-    }
-
-
-    /* -----------------------------------------
-       3. PRIORIZAMOS CÁMARAS ÚTILES PARA
-          LECTURA CERCANA
-       ----------------------------------------- */
-
-    function puntajeCamara(cam) {
-
-      const nombre = String(cam.label || "").toLowerCase();
-
-      let puntos = 0;
-
-      if (nombre.includes("back")) puntos += 30;
-      if (nombre.includes("rear")) puntos += 30;
-      if (nombre.includes("environment")) puntos += 30;
-
-      /*
-        En nuestras pruebas el Ultra Wide del iPhone
-        funciona bien a corta distancia.
-      */
-
-      if (nombre.includes("ultra")) puntos += 50;
-      if (nombre.includes("0.5")) puntos += 50;
-
-      if (nombre.includes("wide")) puntos += 20;
-
-      /*
-        Penalizamos cámara frontal.
-      */
-
-      if (nombre.includes("front")) puntos -= 100;
-      if (nombre.includes("user")) puntos -= 100;
-
-      return puntos;
-    }
-
-
-    camarasTraseras.sort(function(a, b) {
-      return puntajeCamara(b) - puntajeCamara(a);
-    });
-
-
-    const camaraElegida = camarasTraseras[0];
-
-
-    /* -----------------------------------------
-       4. CREAMOS EL LECTOR
-       ----------------------------------------- */
-
-    scanner = new Html5Qrcode(
-      "reader",
-      {
-        formatsToSupport: formatosTRIMA,
-        verbose: false
-      }
-    );
-
-
-    const configuracion = {
-
-      fps: 15,
-
-      qrbox: function(viewfinderWidth, viewfinderHeight) {
-
-        /*
-          Área horizontal grande para códigos de barras.
-        */
-
-        const width =
-          Math.floor(viewfinderWidth * 0.90);
-
-        const height =
-          Math.min(
-            Math.floor(viewfinderHeight * 0.35),
-            220
-          );
-
-        return {
-          width: width,
-          height: height
-        };
-      },
-
-      /*
-        Esta opción permite utilizar capacidades
-        experimentales del navegador cuando existan.
-      */
-
-      experimentalFeatures: {
-        useBarCodeDetectorIfSupported: true
-      }
-    };
-
-
-    /* -----------------------------------------
-       5. INICIAMOS LA CÁMARA ELEGIDA
-       ----------------------------------------- */
-
-    await scanner.start(
-
-      camaraElegida.id,
-
-      configuracion,
-
-      function(codigo, decodedResult) {
-
-        codigoLeido(codigo, decodedResult);
-
-      },
-
-      function(errorLectura) {
-
-        /*
-          Estos errores son normales mientras
-          todavía no encuentra un código.
-        */
-
-      }
-
-    );
-
-
-    scannerActivo = true;
-
-    boton.disabled = false;
-
-    estado.innerHTML =
-      "📷 <strong>Cámara activa</strong><br>" +
-      "Acerca o aleja lentamente el producto.<br>" +
-      "La lectura es automática.";
-
-
-    /* -----------------------------------------
-       6. INTENTAMOS ACTIVAR ENFOQUE CONTINUO
-          SI EL IPHONE LO PERMITE
-       ----------------------------------------- */
-
-    intentarEnfoqueContinuo();
-
-
-  } catch(error) {
-
-    scannerActivo = false;
-    boton.disabled = false;
-
-    estado.innerHTML =
-      "❌ <strong>No fue posible iniciar el lector.</strong><br><br>" +
-      String(error);
-
-    console.error(error);
-  }
-}
-
-
-/* =========================================================
-   INTENTAR AUTOFOCUS
-   ========================================================= */
-
-async function intentarEnfoqueContinuo() {
-
-  try {
-
-    const video =
-      document.querySelector("#reader video");
-
-    if (!video || !video.srcObject) {
-      return;
-    }
-
-    const tracks =
-      video.srcObject.getVideoTracks();
-
-    if (!tracks.length) {
-      return;
-    }
-
-    const track = tracks[0];
-
-    const capabilities =
-      track.getCapabilities
-        ? track.getCapabilities()
-        : {};
-
-
-    /*
-      Algunos dispositivos permiten pedir
-      enfoque continuo desde el navegador.
-    */
-
-    if (
-      capabilities.focusMode &&
-      capabilities.focusMode.includes("continuous")
-    ) {
-
-      await track.applyConstraints({
-        advanced: [
-          {
-            focusMode: "continuous"
-          }
-        ]
-      });
-
-    }
-
-  } catch(error) {
-
-    /*
-      No es un error crítico.
-      Si Safari no lo admite simplemente continúa.
-    */
-
-    console.log(
-      "Enfoque automático no disponible:",
-      error
-    );
-  }
-}
-
-
-/* =========================================================
-   CUANDO DETECTA UN CÓDIGO
-   ========================================================= */
-
-function codigoLeido(codigo, decodedResult) {
-
-  if (codigoProcesado) {
-    return;
-  }
-
-  codigoProcesado = true;
+async function iniciar() {
 
   const estado =
     document.getElementById("estado");
@@ -454,72 +140,108 @@ function codigoLeido(codigo, decodedResult) {
   const resultado =
     document.getElementById("resultado");
 
-  const codigoElemento =
-    document.getElementById("codigoDetectado");
+  const video =
+    document.getElementById("video");
 
 
-  codigoElemento.textContent = codigo;
+  detectado = false;
 
-  resultado.style.display = "block";
+  resultado.style.display = "none";
 
   estado.innerHTML =
-    "🎯 <strong>Lectura realizada correctamente.</strong>";
+    "📷 Abriendo cámara...";
 
-
-  /*
-    Vibración corta como confirmación
-    cuando el iPhone/navegador lo permita.
-  */
 
   try {
 
-    if (navigator.vibrate) {
-      navigator.vibrate(120);
-    }
+    /*
+      ZXing especializado en códigos 1D:
+      EAN, UPC, CODE 128, CODE 39, etc.
+    */
 
-  } catch(error) {}
-
-
-  /* Cerramos la cámara después de leer */
-
-  detenerScanner();
-
-}
+    const lector =
+      new ZXingBrowser.BrowserMultiFormatOneDReader();
 
 
-/* =========================================================
-   DETENER LECTOR
-   ========================================================= */
+    /*
+      Pedimos directamente una cámara trasera.
+      Safari decide la cámara física disponible.
+    */
 
-async function detenerScanner() {
+    controles =
+      await lector.decodeFromConstraints(
 
-  if (!scanner) {
-    scannerActivo = false;
-    return;
-  }
+        {
+          video: {
+            facingMode: {
+              ideal: "environment"
+            },
 
-  try {
+            width: {
+              ideal: 1920
+            },
 
-    if (scannerActivo) {
-      await scanner.stop();
-    }
+            height: {
+              ideal: 1080
+            }
+          }
+        },
+
+        video,
+
+        function(resultadoZXing, error, controls) {
+
+          if (!resultadoZXing || detectado) {
+            return;
+          }
+
+
+          detectado = true;
+
+
+          const texto =
+            resultadoZXing.getText();
+
+
+          document.getElementById("codigo")
+            .textContent = texto;
+
+
+          resultado.style.display =
+            "block";
+
+
+          estado.innerHTML =
+            "🎯 <strong>¡Código leído!</strong>";
+
+
+          /*
+            Detenemos cámara después
+            de reconocer el código.
+          */
+
+          try {
+            controls.stop();
+          } catch(e) {}
+
+        }
+
+      );
+
+
+    estado.innerHTML =
+      "🔎 <strong>Lector activo</strong><br>" +
+      "Coloca las barras atravesando la línea roja.";
+
 
   } catch(error) {
 
-    console.log(error);
+    estado.innerHTML =
+      "❌ <strong>Error:</strong><br>" +
+      String(error);
 
   }
 
-  try {
-
-    await scanner.clear();
-
-  } catch(error) {}
-
-
-  scannerActivo = false;
-
-  document.getElementById("btnCamara").disabled = false;
 }
 
 </script>
