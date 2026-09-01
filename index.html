@@ -1,116 +1,143 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 
-  <title>TRIMA - Prueba ZXing</title>
+<title>TRIMA - Lector de códigos</title>
 
-  <!-- MOTOR ZXING -->
-  <script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f4f6f8;
-      text-align: center;
-    }
+<style>
+  * { box-sizing: border-box; }
 
-    .card {
-      max-width: 500px;
-      margin: auto;
-      padding: 22px;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.12);
-    }
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    color: #222;
+  }
 
-    h1 {
-      margin-bottom: 5px;
-    }
+  .app {
+    max-width: 520px;
+    margin: auto;
+    padding: 20px;
+  }
 
-    button {
-      width: 100%;
-      padding: 17px;
-      margin: 15px 0;
-      border: none;
-      border-radius: 12px;
-      background: #1769c2;
-      color: white;
-      font-size: 19px;
-      font-weight: bold;
-    }
+  h1 {
+    text-align: center;
+    margin-bottom: 4px;
+  }
 
-    .visor {
-      position: relative;
-      width: 100%;
-      overflow: hidden;
-      border-radius: 12px;
-      background: black;
-    }
+  .subtitulo {
+    text-align: center;
+    color: #666;
+    margin-top: 0;
+  }
 
-    video {
-      width: 100%;
-      display: block;
-    }
+  button {
+    width: 100%;
+    padding: 17px;
+    border: 0;
+    border-radius: 12px;
+    background: #1769c2;
+    color: white;
+    font-size: 19px;
+    font-weight: bold;
+    margin: 12px 0;
+  }
 
-    .linea {
-      position: absolute;
-      left: 7%;
-      right: 7%;
-      top: 50%;
-      height: 3px;
-      background: red;
-    }
+  #visor {
+    display: none;
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    background: black;
+  }
 
-    #estado {
-      margin-top: 16px;
-      padding: 15px;
-      border-radius: 10px;
-      background: #eeeeee;
-      font-size: 17px;
-    }
+  video {
+    width: 100%;
+    display: block;
+    min-height: 360px;
+    object-fit: cover;
+  }
 
-    #resultado {
-      display: none;
-      margin-top: 16px;
-      padding: 20px;
-      border-radius: 10px;
-      background: #e6f6ea;
-    }
+  .marco {
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    top: 38%;
+    height: 24%;
+    border: 4px solid white;
+    border-left-width: 7px;
+    border-right-width: 7px;
+    pointer-events: none;
+  }
 
-    #codigo {
-      display: block;
-      margin-top: 10px;
-      font-size: 28px;
-      font-weight: bold;
-      word-break: break-all;
-    }
-  </style>
+  .linea {
+    position: absolute;
+    left: 9%;
+    right: 9%;
+    top: 50%;
+    height: 3px;
+    background: red;
+    pointer-events: none;
+  }
+
+  #estado {
+    margin-top: 15px;
+    padding: 16px;
+    border-radius: 12px;
+    background: white;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  #resultado {
+    display: none;
+    margin-top: 15px;
+    padding: 22px;
+    border-radius: 12px;
+    background: #e6f6ea;
+    text-align: center;
+  }
+
+  #codigo {
+    display: block;
+    font-size: 30px;
+    font-weight: bold;
+    margin-top: 10px;
+    word-break: break-all;
+  }
+
+  #detalle {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #777;
+  }
+</style>
 </head>
 
 <body>
 
-<div class="card">
+<div class="app">
 
   <h1>TRIMA</h1>
+  <p class="subtitulo">Lector de código de barras</p>
 
-  <p>Prueba ZXing — Código de barras</p>
-
-  <button onclick="iniciar()">
+  <button id="btnAbrir" onclick="iniciarScanner()">
     📷 ESCANEAR CÓDIGO
   </button>
 
-  <div class="visor">
+  <div id="visor">
     <video id="video"
            autoplay
            muted
            playsinline>
     </video>
 
+    <div class="marco"></div>
     <div class="linea"></div>
   </div>
 
@@ -123,16 +150,52 @@
     <span id="codigo"></span>
   </div>
 
-</div>
+  <div id="detalle"></div>
 
+</div>
 
 <script>
 
+let stream = null;
 let controles = null;
 let detectado = false;
 
 
-async function iniciar() {
+/* ===============================
+   DETENER TODO
+================================ */
+
+function detenerScanner() {
+
+  try {
+    if (controles) {
+      controles.stop();
+      controles = null;
+    }
+  } catch(e) {}
+
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+}
+
+
+/* ===============================
+   INICIAR CÁMARA
+================================ */
+
+async function iniciarScanner() {
+
+  detenerScanner();
+
+  detectado = false;
+
+  const video =
+    document.getElementById("video");
+
+  const visor =
+    document.getElementById("visor");
 
   const estado =
     document.getElementById("estado");
@@ -140,67 +203,197 @@ async function iniciar() {
   const resultado =
     document.getElementById("resultado");
 
-  const video =
-    document.getElementById("video");
-
-
-  detectado = false;
+  const detalle =
+    document.getElementById("detalle");
 
   resultado.style.display = "none";
+  visor.style.display = "block";
+  detalle.innerHTML = "";
 
   estado.innerHTML =
-    "📷 Abriendo cámara...";
+    "📷 Abriendo cámara trasera...";
 
 
   try {
 
+    /* ---------------------------------
+       1. PEDIR CÁMARA TRASERA
+    ---------------------------------- */
+
+    stream =
+      await navigator.mediaDevices.getUserMedia({
+
+        audio: false,
+
+        video: {
+
+          facingMode: {
+            ideal: "environment"
+          },
+
+          width: {
+            ideal: 1920
+          },
+
+          height: {
+            ideal: 1080
+          },
+
+          frameRate: {
+            ideal: 30
+          }
+
+        }
+
+      });
+
+
+    video.srcObject = stream;
+
+    await video.play();
+
+
+    /* ---------------------------------
+       2. OBTENER TRACK REAL
+    ---------------------------------- */
+
+    const track =
+      stream.getVideoTracks()[0];
+
+    let capabilities = {};
+
+    if (typeof track.getCapabilities === "function") {
+      capabilities = track.getCapabilities();
+    }
+
+
+    /* ---------------------------------
+       3. INTENTAR ENFOQUE CONTINUO
+    ---------------------------------- */
+
+    const advanced = [];
+
+
+    if (
+      capabilities.focusMode &&
+      Array.isArray(capabilities.focusMode) &&
+      capabilities.focusMode.includes("continuous")
+    ) {
+
+      advanced.push({
+        focusMode: "continuous"
+      });
+
+    }
+
+
     /*
-      ZXing especializado en códigos 1D:
-      EAN, UPC, CODE 128, CODE 39, etc.
+       Si Safari expone zoom,
+       usamos un aumento MUY ligero.
+       Esto puede ayudar a que el código
+       ocupe más píxeles sin obligarnos
+       a acercar demasiado el teléfono.
     */
+
+    if (
+      capabilities.zoom &&
+      typeof capabilities.zoom.min === "number" &&
+      typeof capabilities.zoom.max === "number"
+    ) {
+
+      let zoomDeseado =
+        Math.max(capabilities.zoom.min, 1.2);
+
+      zoomDeseado =
+        Math.min(zoomDeseado, capabilities.zoom.max);
+
+      advanced.push({
+        zoom: zoomDeseado
+      });
+
+    }
+
+
+    if (advanced.length > 0) {
+
+      try {
+
+        await track.applyConstraints({
+          advanced: advanced
+        });
+
+      } catch(e) {
+
+        console.log(
+          "Safari no aplicó constraints avanzados:",
+          e
+        );
+
+      }
+
+    }
+
+
+    /* ---------------------------------
+       4. MOSTRAR CONFIGURACIÓN REAL
+    ---------------------------------- */
+
+    const settings =
+      typeof track.getSettings === "function"
+      ? track.getSettings()
+      : {};
+
+
+    detalle.innerHTML =
+      "Cámara: " +
+      (track.label || "trasera") +
+      "<br>" +
+      "Resolución: " +
+      (settings.width || "?") +
+      " × " +
+      (settings.height || "?");
+
+
+    estado.innerHTML =
+      "🔎 <strong>Lector activo</strong><br>" +
+      "Mantén el código dentro del marco.";
+
+
+    /* ---------------------------------
+       5. ENTREGAR STREAM A ZXING
+    ---------------------------------- */
 
     const lector =
-      new ZXingBrowser.BrowserMultiFormatOneDReader();
+      new ZXingBrowser.BrowserMultiFormatReader();
 
-
-    /*
-      Pedimos directamente una cámara trasera.
-      Safari decide la cámara física disponible.
-    */
 
     controles =
-      await lector.decodeFromConstraints(
+      await lector.decodeFromStream(
 
-        {
-          video: {
-            facingMode: {
-              ideal: "environment"
-            },
-
-            width: {
-              ideal: 1920
-            },
-
-            height: {
-              ideal: 1080
-            }
-          }
-        },
+        stream,
 
         video,
 
-        function(resultadoZXing, error, controls) {
+        function(resultadoZXing, error, controlActual) {
 
-          if (!resultadoZXing || detectado) {
+          if (
+            !resultadoZXing ||
+            detectado
+          ) {
+            return;
+          }
+
+
+          const texto =
+            resultadoZXing.getText();
+
+
+          if (!texto) {
             return;
           }
 
 
           detectado = true;
-
-
-          const texto =
-            resultadoZXing.getText();
 
 
           document.getElementById("codigo")
@@ -212,37 +405,54 @@ async function iniciar() {
 
 
           estado.innerHTML =
-            "🎯 <strong>¡Código leído!</strong>";
+            "🎯 <strong>Código leído correctamente</strong>";
 
-
-          /*
-            Detenemos cámara después
-            de reconocer el código.
-          */
 
           try {
-            controls.stop();
+            controlActual.stop();
           } catch(e) {}
+
+
+          setTimeout(function() {
+
+            if (stream) {
+
+              stream
+                .getTracks()
+                .forEach(t => t.stop());
+
+            }
+
+          }, 300);
 
         }
 
       );
 
 
-    estado.innerHTML =
-      "🔎 <strong>Lector activo</strong><br>" +
-      "Coloca las barras atravesando la línea roja.";
-
-
   } catch(error) {
 
+    console.error(error);
+
     estado.innerHTML =
-      "❌ <strong>Error:</strong><br>" +
-      String(error);
+      "❌ No fue posible iniciar el lector.<br><br>" +
+      error.name +
+      ": " +
+      error.message;
 
   }
 
 }
+
+
+/* ===============================
+   LIMPIEZA AL SALIR
+================================ */
+
+window.addEventListener(
+  "pagehide",
+  detenerScanner
+);
 
 </script>
 
