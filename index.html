@@ -2,120 +2,219 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+
 <meta name="viewport"
       content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 
-<title>TRIMA - Lector de códigos</title>
+<title>TRIMA - Conteo Cíclico</title>
 
 <script src="https://unpkg.com/@zxing/browser@latest"></script>
 
 <style>
-  * { box-sizing: border-box; }
 
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f4f6f8;
-    color: #222;
-  }
+* {
+  box-sizing: border-box;
+}
 
-  .app {
-    max-width: 520px;
-    margin: auto;
-    padding: 20px;
-  }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+  color: #222;
+}
 
-  h1 {
-    text-align: center;
-    margin-bottom: 4px;
-  }
+.app {
+  max-width: 520px;
+  margin: auto;
+  padding: 18px;
+}
 
-  .subtitulo {
-    text-align: center;
-    color: #666;
-    margin-top: 0;
-  }
+.encabezado {
+  background: #17365d;
+  color: white;
+  padding: 20px;
+  border-radius: 14px;
+  text-align: center;
+  margin-bottom: 15px;
+}
 
-  button {
-    width: 100%;
-    padding: 17px;
-    border: 0;
-    border-radius: 12px;
-    background: #1769c2;
-    color: white;
-    font-size: 19px;
-    font-weight: bold;
-    margin: 12px 0;
-  }
+.encabezado h1 {
+  margin: 0;
+  font-size: 27px;
+}
 
-  #visor {
-    display: none;
-    position: relative;
-    overflow: hidden;
-    border-radius: 16px;
-    background: black;
-  }
+.encabezado p {
+  margin: 5px 0 0;
+  font-size: 15px;
+}
 
-  video {
-    width: 100%;
-    display: block;
-    min-height: 360px;
-    object-fit: cover;
-  }
+.tarjeta {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
 
-  .marco {
-    position: absolute;
-    left: 6%;
-    right: 6%;
-    top: 38%;
-    height: 24%;
-    border: 4px solid white;
-    border-left-width: 7px;
-    border-right-width: 7px;
-    pointer-events: none;
-  }
+.tituloSeccion {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
 
-  .linea {
-    position: absolute;
-    left: 9%;
-    right: 9%;
-    top: 50%;
-    height: 3px;
-    background: red;
-    pointer-events: none;
-  }
+input {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid #d5d9df;
+  border-radius: 11px;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
 
-  #estado {
-    margin-top: 15px;
-    padding: 16px;
-    border-radius: 12px;
-    background: white;
-    text-align: center;
-    line-height: 1.5;
-  }
+button {
+  width: 100%;
+  padding: 16px;
+  border: 0;
+  border-radius: 11px;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 8px;
+}
 
-  #resultado {
-    display: none;
-    margin-top: 15px;
-    padding: 22px;
-    border-radius: 12px;
-    background: #e6f6ea;
-    text-align: center;
-  }
+.btnBuscar {
+  background: #17365d;
+  color: white;
+}
 
-  #codigo {
-    display: block;
-    font-size: 30px;
-    font-weight: bold;
-    margin-top: 10px;
-    word-break: break-all;
-  }
+.btnEscanear {
+  background: #2f68e8;
+  color: white;
+}
 
-  #detalle {
-    margin-top: 10px;
-    font-size: 13px;
-    color: #777;
-  }
+#visor {
+  display: none;
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  background: black;
+  margin-top: 15px;
+}
+
+video {
+  width: 100%;
+  display: block;
+  min-height: 360px;
+  object-fit: cover;
+}
+
+.marco {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 38%;
+  height: 24%;
+  border: 4px solid white;
+  border-left-width: 7px;
+  border-right-width: 7px;
+  pointer-events: none;
+}
+
+.linea {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 50%;
+  height: 3px;
+  background: red;
+  pointer-events: none;
+}
+
+#estadoScanner {
+  display: none;
+  margin-top: 12px;
+  padding: 13px;
+  background: #eef3f8;
+  border-radius: 10px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+#producto {
+  display: none;
+}
+
+.estadoActivo {
+  background: #e8f5e9;
+  color: #166534;
+  padding: 10px;
+  border-radius: 9px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.estadoDesactivado {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 13px;
+  border-radius: 9px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.descripcion {
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 1.35;
+  margin-bottom: 15px;
+}
+
+.dato {
+  border-top: 1px solid #e3e3e3;
+  padding: 9px 0;
+  line-height: 1.4;
+}
+
+.dato strong {
+  color: #17365d;
+}
+
+.stock {
+  margin-top: 15px;
+  background: #f1f5f9;
+  border-radius: 11px;
+  padding: 16px;
+  text-align: center;
+}
+
+.stockNumero {
+  font-size: 34px;
+  font-weight: bold;
+  color: #17365d;
+  margin-top: 4px;
+}
+
+.mensaje {
+  display: none;
+  padding: 14px;
+  border-radius: 10px;
+  margin-top: 12px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.mensajeError {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.mensajeInfo {
+  background: #e8f0fe;
+  color: #17365d;
+}
+
 </style>
 </head>
 
@@ -123,73 +222,401 @@
 
 <div class="app">
 
-  <h1>TRIMA</h1>
-  <p class="subtitulo">Lector de código de barras</p>
-
-  <button id="btnAbrir" onclick="iniciarScanner()">
-    📷 ESCANEAR CÓDIGO
-  </button>
-
-  <div id="visor">
-    <video id="video"
-           autoplay
-           muted
-           playsinline>
-    </video>
-
-    <div class="marco"></div>
-    <div class="linea"></div>
+  <div class="encabezado">
+    <h1>TRIMA</h1>
+    <p>CONTEO CÍCLICO DE INVENTARIO</p>
   </div>
 
-  <div id="estado">
-    Listo para escanear.
+
+  <div class="tarjeta">
+
+    <div class="tituloSeccion">
+      BUSCAR PRODUCTO
+    </div>
+
+    <input
+      id="busqueda"
+      type="text"
+      placeholder="Código de barras / código proveedor"
+      autocomplete="off">
+
+    <button
+      class="btnBuscar"
+      onclick="buscarManual()">
+      🔎 BUSCAR
+    </button>
+
+    <button
+      class="btnEscanear"
+      onclick="iniciarScanner()">
+      📷 ESCANEAR CÓDIGO DE BARRAS
+    </button>
+
+    <div id="visor">
+
+      <video
+        id="video"
+        autoplay
+        muted
+        playsinline>
+      </video>
+
+      <div class="marco"></div>
+      <div class="linea"></div>
+
+    </div>
+
+    <div id="estadoScanner"></div>
+
+    <div
+      id="mensaje"
+      class="mensaje">
+    </div>
+
   </div>
 
-  <div id="resultado">
-    ✅ <strong>CÓDIGO DETECTADO</strong>
-    <span id="codigo"></span>
-  </div>
 
-  <div id="detalle"></div>
+  <div
+    id="producto"
+    class="tarjeta">
+
+    <div id="estadoArticulo"></div>
+
+    <div
+      id="descripcion"
+      class="descripcion">
+    </div>
+
+    <div class="dato">
+      <strong>Código proveedor:</strong>
+      <span id="codigoProveedor"></span>
+    </div>
+
+    <div class="dato">
+      <strong>Código de barras:</strong>
+      <span id="codigoBarras"></span>
+    </div>
+
+    <div class="dato">
+      <strong>ID ERP:</strong>
+      <span id="idERP"></span>
+    </div>
+
+    <div class="stock">
+      STOCK ERP
+      <div
+        id="stockERP"
+        class="stockNumero">
+      </div>
+    </div>
+
+  </div>
 
 </div>
 
+
 <script>
+
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbxLuRTDM0DHJ6mHinM0yyylBgSk7a8fCszae4Ryc4KlWhZ7hRr9zwp1IRmr-BeGn1468A/exec";
+
 
 let stream = null;
 let controles = null;
 let detectado = false;
 
 
-/* ===============================
-   DETENER TODO
-================================ */
+// =====================================================
+// MENSAJES
+// =====================================================
+
+function mostrarMensaje(texto, tipo = "info") {
+
+  const mensaje =
+    document.getElementById("mensaje");
+
+  mensaje.style.display = "block";
+
+  mensaje.className =
+    tipo === "error"
+      ? "mensaje mensajeError"
+      : "mensaje mensajeInfo";
+
+  mensaje.innerHTML = texto;
+}
+
+
+function ocultarMensaje() {
+
+  document.getElementById("mensaje")
+    .style.display = "none";
+}
+
+
+// =====================================================
+// BÚSQUEDA MANUAL
+// =====================================================
+
+function buscarManual() {
+
+  const codigo =
+    document.getElementById("busqueda")
+      .value
+      .trim();
+
+  if (!codigo) {
+
+    mostrarMensaje(
+      "Escribe un código de barras o código de proveedor.",
+      "error"
+    );
+
+    return;
+  }
+
+  buscarProducto(codigo);
+}
+
+
+document.getElementById("busqueda")
+  .addEventListener("keydown", function(event) {
+
+    if (event.key === "Enter") {
+      buscarManual();
+    }
+
+  });
+
+
+// =====================================================
+// CONSULTA A TRIMA MEDIANTE JSONP
+// =====================================================
+
+function buscarProducto(codigo) {
+
+  detenerScanner();
+
+  ocultarMensaje();
+
+  document.getElementById("visor")
+    .style.display = "none";
+
+  document.getElementById("estadoScanner")
+    .style.display = "none";
+
+  document.getElementById("producto")
+    .style.display = "none";
+
+  document.getElementById("busqueda")
+    .value = codigo;
+
+  mostrarMensaje(
+    "🔎 Buscando producto en TRIMA..."
+  );
+
+
+  const callback =
+    "trimaCallback_" + Date.now();
+
+
+  const script =
+    document.createElement("script");
+
+
+  const timeout =
+    setTimeout(function() {
+
+      limpiarJSONP();
+
+      mostrarMensaje(
+        "No fue posible consultar TRIMA. Intenta nuevamente.",
+        "error"
+      );
+
+    }, 12000);
+
+
+  function limpiarJSONP() {
+
+    clearTimeout(timeout);
+
+    try {
+      delete window[callback];
+    } catch(e) {}
+
+    if (script.parentNode) {
+      script.parentNode.removeChild(script);
+    }
+  }
+
+
+  window[callback] =
+    function(datos) {
+
+      limpiarJSONP();
+
+      if (!datos || datos.ok !== true) {
+
+        mostrarMensaje(
+          "Error al consultar el producto.",
+          "error"
+        );
+
+        return;
+      }
+
+
+      if (!datos.encontrado) {
+
+        mostrarMensaje(
+          "❌ Producto no encontrado.<br><br>" +
+          "Código buscado: <strong>" +
+          escaparHTML(codigo) +
+          "</strong>",
+          "error"
+        );
+
+        return;
+      }
+
+
+      mostrarProducto(datos.producto);
+    };
+
+
+  script.onerror =
+    function() {
+
+      limpiarJSONP();
+
+      mostrarMensaje(
+        "No fue posible conectar con TRIMA.",
+        "error"
+      );
+    };
+
+
+  script.src =
+    API_URL +
+    "?accion=buscar" +
+    "&codigo=" +
+    encodeURIComponent(codigo) +
+    "&callback=" +
+    encodeURIComponent(callback) +
+    "&_=" +
+    Date.now();
+
+
+  document.body.appendChild(script);
+}
+
+
+// =====================================================
+// MOSTRAR PRODUCTO
+// =====================================================
+
+function mostrarProducto(p) {
+
+  ocultarMensaje();
+
+  document.getElementById("producto")
+    .style.display = "block";
+
+  document.getElementById("descripcion")
+    .textContent =
+      p.descripcion || "";
+
+  document.getElementById("codigoProveedor")
+    .textContent =
+      p.codigoProveedor || "—";
+
+  document.getElementById("codigoBarras")
+    .textContent =
+      p.codigoBarras || "—";
+
+  document.getElementById("idERP")
+    .textContent =
+      p.id || "—";
+
+  document.getElementById("stockERP")
+    .textContent =
+      p.stockERP === ""
+        ? "0"
+        : p.stockERP;
+
+
+  const estado =
+    document.getElementById("estadoArticulo");
+
+
+  if (p.desactivado === true) {
+
+    estado.className =
+      "estadoDesactivado";
+
+    estado.innerHTML =
+      "🔴 ARTÍCULO DESACTIVADO<br>" +
+      "Debe contarse físicamente.";
+
+  } else {
+
+    estado.className =
+      "estadoActivo";
+
+    estado.innerHTML =
+      "🟢 ARTÍCULO ACTIVO";
+  }
+
+
+  document.getElementById("producto")
+    .scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+}
+
+
+// =====================================================
+// SCANNER
+// ESTA ES LA CONFIGURACIÓN QUE YA FUNCIONÓ EN IPHONE
+// =====================================================
 
 function detenerScanner() {
 
   try {
+
     if (controles) {
       controles.stop();
       controles = null;
     }
+
   } catch(e) {}
 
+
   if (stream) {
-    stream.getTracks().forEach(track => track.stop());
+
+    stream
+      .getTracks()
+      .forEach(
+        track => track.stop()
+      );
+
     stream = null;
   }
 }
 
-
-/* ===============================
-   INICIAR CÁMARA
-================================ */
 
 async function iniciarScanner() {
 
   detenerScanner();
 
   detectado = false;
+
+  ocultarMensaje();
+
+  document.getElementById("producto")
+    .style.display = "none";
+
 
   const video =
     document.getElementById("video");
@@ -198,27 +625,17 @@ async function iniciarScanner() {
     document.getElementById("visor");
 
   const estado =
-    document.getElementById("estado");
+    document.getElementById("estadoScanner");
 
-  const resultado =
-    document.getElementById("resultado");
 
-  const detalle =
-    document.getElementById("detalle");
-
-  resultado.style.display = "none";
   visor.style.display = "block";
-  detalle.innerHTML = "";
+  estado.style.display = "block";
 
   estado.innerHTML =
     "📷 Abriendo cámara trasera...";
 
 
   try {
-
-    /* ---------------------------------
-       1. PEDIR CÁMARA TRASERA
-    ---------------------------------- */
 
     stream =
       await navigator.mediaDevices.getUserMedia({
@@ -253,64 +670,65 @@ async function iniciarScanner() {
     await video.play();
 
 
-    /* ---------------------------------
-       2. OBTENER TRACK REAL
-    ---------------------------------- */
-
     const track =
       stream.getVideoTracks()[0];
 
+
     let capabilities = {};
 
-    if (typeof track.getCapabilities === "function") {
-      capabilities = track.getCapabilities();
+
+    if (
+      typeof track.getCapabilities ===
+      "function"
+    ) {
+
+      capabilities =
+        track.getCapabilities();
     }
 
-
-    /* ---------------------------------
-       3. INTENTAR ENFOQUE CONTINUO
-    ---------------------------------- */
 
     const advanced = [];
 
 
     if (
       capabilities.focusMode &&
-      Array.isArray(capabilities.focusMode) &&
-      capabilities.focusMode.includes("continuous")
+      Array.isArray(
+        capabilities.focusMode
+      ) &&
+      capabilities.focusMode.includes(
+        "continuous"
+      )
     ) {
 
       advanced.push({
         focusMode: "continuous"
       });
-
     }
 
 
-    /*
-       Si Safari expone zoom,
-       usamos un aumento MUY ligero.
-       Esto puede ayudar a que el código
-       ocupe más píxeles sin obligarnos
-       a acercar demasiado el teléfono.
-    */
-
     if (
       capabilities.zoom &&
-      typeof capabilities.zoom.min === "number" &&
-      typeof capabilities.zoom.max === "number"
+      typeof capabilities.zoom.min ===
+        "number" &&
+      typeof capabilities.zoom.max ===
+        "number"
     ) {
 
       let zoomDeseado =
-        Math.max(capabilities.zoom.min, 1.2);
+        Math.max(
+          capabilities.zoom.min,
+          1.2
+        );
 
       zoomDeseado =
-        Math.min(zoomDeseado, capabilities.zoom.max);
+        Math.min(
+          zoomDeseado,
+          capabilities.zoom.max
+        );
 
       advanced.push({
         zoom: zoomDeseado
       });
-
     }
 
 
@@ -325,33 +743,11 @@ async function iniciarScanner() {
       } catch(e) {
 
         console.log(
-          "Safari no aplicó constraints avanzados:",
+          "No se aplicaron constraints avanzados:",
           e
         );
-
       }
-
     }
-
-
-    /* ---------------------------------
-       4. MOSTRAR CONFIGURACIÓN REAL
-    ---------------------------------- */
-
-    const settings =
-      typeof track.getSettings === "function"
-      ? track.getSettings()
-      : {};
-
-
-    detalle.innerHTML =
-      "Cámara: " +
-      (track.label || "trasera") +
-      "<br>" +
-      "Resolución: " +
-      (settings.width || "?") +
-      " × " +
-      (settings.height || "?");
 
 
     estado.innerHTML =
@@ -359,12 +755,9 @@ async function iniciarScanner() {
       "Mantén el código dentro del marco.";
 
 
-    /* ---------------------------------
-       5. ENTREGAR STREAM A ZXING
-    ---------------------------------- */
-
     const lector =
-      new ZXingBrowser.BrowserMultiFormatReader();
+      new ZXingBrowser
+        .BrowserMultiFormatReader();
 
 
     controles =
@@ -374,7 +767,11 @@ async function iniciarScanner() {
 
         video,
 
-        function(resultadoZXing, error, controlActual) {
+        function(
+          resultadoZXing,
+          error,
+          controlActual
+        ) {
 
           if (
             !resultadoZXing ||
@@ -396,34 +793,34 @@ async function iniciarScanner() {
           detectado = true;
 
 
-          document.getElementById("codigo")
-            .textContent = texto;
-
-
-          resultado.style.display =
-            "block";
-
-
           estado.innerHTML =
-            "🎯 <strong>Código leído correctamente</strong>";
+            "🎯 <strong>Código leído:</strong><br>" +
+            escaparHTML(texto);
 
 
           try {
+
             controlActual.stop();
+
           } catch(e) {}
 
 
-          setTimeout(function() {
+          setTimeout(
+            function() {
 
-            if (stream) {
+              detenerScanner();
 
-              stream
-                .getTracks()
-                .forEach(t => t.stop());
+              visor.style.display =
+                "none";
 
-            }
+              estado.style.display =
+                "none";
 
-          }, 300);
+              buscarProducto(texto);
+
+            },
+            300
+          );
 
         }
 
@@ -436,18 +833,27 @@ async function iniciarScanner() {
 
     estado.innerHTML =
       "❌ No fue posible iniciar el lector.<br><br>" +
-      error.name +
+      escaparHTML(error.name) +
       ": " +
-      error.message;
-
+      escaparHTML(error.message);
   }
-
 }
 
 
-/* ===============================
-   LIMPIEZA AL SALIR
-================================ */
+// =====================================================
+// SEGURIDAD DE TEXTO
+// =====================================================
+
+function escaparHTML(valor) {
+
+  return String(valor)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 
 window.addEventListener(
   "pagehide",
