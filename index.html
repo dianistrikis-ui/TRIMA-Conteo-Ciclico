@@ -60,69 +60,126 @@
 
 <body>
 
-  <div class="card">
-    <h1>TRIMA</h1>
-    <p>Prueba de lector de código de barras</p>
+<div class="card">
 
-    <button onclick="iniciarScanner()">
-      📷 ABRIR CÁMARA
-    </button>
+  <h1>TRIMA</h1>
+  <p>Prueba de lector de código de barras</p>
 
-    <div id="reader"></div>
+  <button onclick="iniciarScanner()">
+    📷 ABRIR CÁMARA
+  </button>
 
-    <div id="resultado">
-      Esperando código...
-    </div>
+  <div id="reader"></div>
+
+  <div id="resultado">
+    Esperando código...
   </div>
+
+</div>
 
 <script>
 
 let scanner = null;
 let procesado = false;
 
+const formatosTRIMA = [
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39
+];
+
 function iniciarScanner() {
 
-  document.getElementById("resultado").innerText =
+  const resultado = document.getElementById("resultado");
+
+  resultado.innerHTML =
     "Solicitando acceso a la cámara...";
 
-  scanner = new Html5Qrcode("reader");
   procesado = false;
 
-  scanner.start(
-    { facingMode: "environment" },
+  scanner = new Html5Qrcode(
+    "reader",
     {
-      fps: 10,
-      qrbox: function(width, height) {
-        return {
-          width: Math.floor(width * 0.85),
-          height: Math.floor(height * 0.35)
-        };
-      }
+      formatsToSupport: formatosTRIMA,
+      verbose: false
+    }
+  );
+
+  const configuracion = {
+    fps: 15,
+
+    qrbox: function(width, height) {
+
+      const ancho =
+        Math.floor(width * 0.90);
+
+      const alto =
+        Math.floor(height * 0.30);
+
+      return {
+        width: ancho,
+        height: alto
+      };
     },
 
-    function(codigo) {
+    aspectRatio: 1.777778
+  };
+
+  scanner.start(
+
+    { facingMode: "environment" },
+
+    configuracion,
+
+    function(codigoDetectado, decodedResult) {
 
       if (procesado) return;
+
       procesado = true;
 
-      document.getElementById("resultado").innerHTML =
-        "<strong>CÓDIGO DETECTADO:</strong><br>" + codigo;
+      resultado.innerHTML =
+        "✅ <strong>CÓDIGO DETECTADO</strong><br><br>" +
+        codigoDetectado;
 
-      scanner.stop().then(function() {
-        scanner.clear();
-      });
+      if (decodedResult &&
+          decodedResult.result &&
+          decodedResult.result.format) {
+
+        resultado.innerHTML +=
+          "<br><br>Formato: " +
+          decodedResult.result.format.formatName;
+      }
+
+      scanner.stop()
+        .then(function() {
+          scanner.clear();
+        })
+        .catch(function() {});
 
     },
 
     function(errorLectura) {
-      // Se ignoran los intentos sin lectura.
+      // Es normal recibir errores mientras
+      // todavía no hay un código enfocado.
     }
+
   )
+
+  .then(function() {
+
+    resultado.innerHTML =
+      "📷 <strong>Cámara lista</strong><br>" +
+      "Apunta al código de barras";
+
+  })
 
   .catch(function(error) {
 
-    document.getElementById("resultado").innerHTML =
-      "<strong>ERROR DE CÁMARA:</strong><br>" +
+    resultado.innerHTML =
+      "❌ <strong>ERROR DE CÁMARA</strong><br><br>" +
       String(error);
 
   });
