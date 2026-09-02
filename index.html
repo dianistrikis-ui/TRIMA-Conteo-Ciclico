@@ -507,6 +507,177 @@ let productoActual = null;
 let codigoActual = "";
 
 
+      // ======================================================
+// CATÁLOGO LOCAL TRIMA
+// Se carga una vez y permite búsquedas instantáneas
+// ======================================================
+
+let catalogoTRIMA = [];
+let indiceCatalogoTRIMA = new Map();
+let catalogoListo = false;
+
+function normalizarCodigo(valor) {
+  return String(valor || "")
+    .trim()
+    .toUpperCase();
+}
+
+function construirIndiceCatalogo(catalogo) {
+
+  indiceCatalogoTRIMA = new Map();
+
+  catalogo.forEach(function(producto) {
+
+    const codigoProveedor =
+      normalizarCodigo(producto.codigoProveedor);
+
+    const codigoBarras =
+      normalizarCodigo(producto.codigoBarras);
+
+    if (codigoProveedor) {
+      indiceCatalogoTRIMA.set(
+        codigoProveedor,
+        producto
+      );
+    }
+
+    if (codigoBarras) {
+      indiceCatalogoTRIMA.set(
+        codigoBarras,
+        producto
+      );
+    }
+
+  });
+
+}
+
+function cargarCatalogoTRIMA() {
+
+  catalogoListo = false;
+
+  const callback =
+    "catalogoCallback_" +
+    Date.now();
+
+  window[callback] =
+    function(respuesta) {
+
+      try {
+
+        if (
+          !respuesta ||
+          respuesta.ok !== true ||
+          !Array.isArray(respuesta.catalogo)
+        ) {
+          throw new Error(
+            respuesta && respuesta.error
+              ? respuesta.error
+              : "No fue posible cargar el catálogo."
+          );
+        }
+
+        catalogoTRIMA =
+          respuesta.catalogo;
+
+        construirIndiceCatalogo(
+          catalogoTRIMA
+        );
+
+        catalogoListo = true;
+
+        console.log(
+          "Catálogo TRIMA cargado:",
+          catalogoTRIMA.length,
+          "artículos"
+        );
+
+      } catch(error) {
+
+        console.error(
+          "Error cargando catálogo TRIMA:",
+          error
+        );
+
+        catalogoListo = false;
+
+      } finally {
+
+        const script =
+          document.getElementById(
+            "scriptCatalogoTRIMA"
+          );
+
+        if (script) {
+          script.remove();
+        }
+
+        try {
+          delete window[callback];
+        } catch(e) {}
+
+      }
+
+    };
+
+
+  const script =
+    document.createElement("script");
+
+  script.id =
+    "scriptCatalogoTRIMA";
+
+  script.src =
+    API_URL +
+    "?accion=catalogo" +
+    "&callback=" +
+    encodeURIComponent(callback) +
+    "&_=" +
+    Date.now();
+
+  script.onerror =
+    function() {
+
+      console.error(
+        "No fue posible descargar el catálogo TRIMA."
+      );
+
+      catalogoListo = false;
+
+      script.remove();
+
+      try {
+        delete window[callback];
+      } catch(e) {}
+
+    };
+
+  document.body.appendChild(script);
+
+}
+
+
+function buscarProductoLocal(codigo) {
+
+  if (!catalogoListo) {
+    return null;
+  }
+
+  const clave =
+    normalizarCodigo(codigo);
+
+  if (!clave) {
+    return null;
+  }
+
+  return (
+    indiceCatalogoTRIMA.get(clave) ||
+    null
+  );
+
+}
+
+
 
 // =====================================================
 // MENSAJES
@@ -853,17 +1024,39 @@ async function buscarProducto(
 
 
   mostrarMensaje(
-    "🔎 Buscando producto en TRIMA..."
-  );
+  catalogoListo
+    ? "🔎 Buscando producto..."
+    : "⏳ Cargando catálogo TRIMA..."
+);
 
+try {
 
-  try {
+  let datos;
 
+  const productoLocal =
+    buscarProductoLocal(codigo);
 
-    const datos =
+  if (productoLocal) {
+
+    datos = {
+      ok: true,
+      encontrado: true,
+      producto: productoLocal
+    };
+
+  } else {
+
+    // Respaldo:
+    // si el catálogo todavía no terminó de cargar
+    // o el código no existe localmente,
+    // consulta Apps Script como antes.
+
+    datos =
       await consultarJSONP(
         codigo
       );
+
+  }
 
 
     if (
@@ -2427,6 +2620,24 @@ window.addEventListener(
   detenerScanner
 );
 
+
+// ======================================================
+// INICIO DE LA APP TRIMA
+// Carga el catálogo una sola vez
+// ======================================================
+
+document.addEventListener(
+  "DOMContentLoaded",
+  function() {
+
+    console.log(
+      "Iniciando catálogo TRIMA..."
+    );
+
+    cargarCatalogoTRIMA();
+
+  }
+);
 
 </script>
 
