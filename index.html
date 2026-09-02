@@ -82,12 +82,32 @@ button {
   margin-top: 8px;
 }
 
+button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
 .btnBuscar {
   background: #17365d;
   color: white;
 }
 
 .btnEscanear {
+  background: #2f68e8;
+  color: white;
+}
+
+.btnCoincide {
+  background: #16803a;
+  color: white;
+}
+
+.btnGuardar {
+  background: #17365d;
+  color: white;
+}
+
+.btnSiguiente {
   background: #2f68e8;
   color: white;
 }
@@ -196,13 +216,39 @@ video {
   margin-top: 4px;
 }
 
+.conteoBox {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 2px solid #e5e7eb;
+}
+
+.conteoBox label {
+  display: block;
+  font-weight: bold;
+  color: #17365d;
+  margin-bottom: 8px;
+}
+
+#conteoFisico {
+  text-align: center;
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.ayuda {
+  color: #666;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 4px 0 10px;
+}
+
 .mensaje {
   display: none;
   padding: 14px;
   border-radius: 10px;
   margin-top: 12px;
   text-align: center;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .mensajeError {
@@ -213,6 +259,49 @@ video {
 .mensajeInfo {
   background: #e8f0fe;
   color: #17365d;
+}
+
+.mensajeOk {
+  background: #e8f5e9;
+  color: #166534;
+}
+
+.resultadoConteo {
+  display: none;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 11px;
+  text-align: center;
+}
+
+.resultadoOK {
+  background: #e8f5e9;
+  color: #166534;
+}
+
+.resultadoDiferencia {
+  background: #fff4db;
+  color: #8a4b00;
+}
+
+.resultadoTitulo {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.resultadoNumeros {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.previo {
+  margin-top: 12px;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 9px;
+  font-size: 14px;
+  color: #475569;
 }
 
 </style>
@@ -238,7 +327,8 @@ video {
       id="busqueda"
       type="text"
       placeholder="Código de barras / código proveedor"
-      autocomplete="off">
+      autocomplete="off"
+      inputmode="text">
 
     <button
       class="btnBuscar"
@@ -251,6 +341,7 @@ video {
       onclick="iniciarScanner()">
       📷 ESCANEAR CÓDIGO DE BARRAS
     </button>
+
 
     <div id="visor">
 
@@ -265,6 +356,7 @@ video {
       <div class="linea"></div>
 
     </div>
+
 
     <div id="estadoScanner"></div>
 
@@ -287,27 +379,109 @@ video {
       class="descripcion">
     </div>
 
+
     <div class="dato">
       <strong>Código proveedor:</strong>
       <span id="codigoProveedor"></span>
     </div>
+
 
     <div class="dato">
       <strong>Código de barras:</strong>
       <span id="codigoBarras"></span>
     </div>
 
+
     <div class="dato">
       <strong>ID ERP:</strong>
       <span id="idERP"></span>
     </div>
 
+
     <div class="stock">
+
       STOCK ERP
+
       <div
         id="stockERP"
         class="stockNumero">
       </div>
+
+    </div>
+
+
+    <div
+      id="conteoPrevio"
+      class="previo"
+      style="display:none;">
+    </div>
+
+
+    <div class="conteoBox">
+
+
+      <button
+        id="btnCoincide"
+        class="btnCoincide"
+        onclick="confirmarCoincidencia()">
+
+        ✓ STOCK FÍSICO COINCIDE CON ERP
+
+      </button>
+
+
+      <div style="height:14px"></div>
+
+
+      <label for="conteoFisico">
+        CONTEO FÍSICO
+      </label>
+
+
+      <input
+        id="conteoFisico"
+        type="number"
+        min="0"
+        step="1"
+        inputmode="numeric"
+        placeholder="Cantidad encontrada">
+
+
+      <div class="ayuda">
+
+        Si la cantidad física es distinta al Stock ERP,
+        captura aquí la cantidad encontrada.
+
+      </div>
+
+
+      <button
+        id="btnGuardar"
+        class="btnGuardar"
+        onclick="guardarConteoFisico()">
+
+        GUARDAR CONTEO FÍSICO
+
+      </button>
+
+
+      <div
+        id="resultadoConteo"
+        class="resultadoConteo">
+      </div>
+
+
+      <button
+        id="btnSiguiente"
+        class="btnSiguiente"
+        style="display:none;"
+        onclick="siguienteProducto()">
+
+        📷 ESCANEAR SIGUIENTE PRODUCTO
+
+      </button>
+
+
     </div>
 
   </div>
@@ -317,52 +491,91 @@ video {
 
 <script>
 
+
 const API_URL =
   "https://script.google.com/macros/s/AKfycbxLuRTDM0DHJ6mHinM0yyylBgSk7a8fCszae4Ryc4KlWhZ7hRr9zwp1IRmr-BeGn1468A/exec";
 
 
 let stream = null;
+
 let controles = null;
+
 let detectado = false;
+
+let productoActual = null;
+
+let codigoActual = "";
+
 
 
 // =====================================================
 // MENSAJES
 // =====================================================
 
-function mostrarMensaje(texto, tipo = "info") {
+
+function mostrarMensaje(
+  texto,
+  tipo = "info"
+) {
 
   const mensaje =
-    document.getElementById("mensaje");
+    document.getElementById(
+      "mensaje"
+    );
 
-  mensaje.style.display = "block";
 
-  mensaje.className =
-    tipo === "error"
-      ? "mensaje mensajeError"
-      : "mensaje mensajeInfo";
+  mensaje.style.display =
+    "block";
 
-  mensaje.innerHTML = texto;
+
+  if (tipo === "error") {
+
+    mensaje.className =
+      "mensaje mensajeError";
+
+  } else if (tipo === "ok") {
+
+    mensaje.className =
+      "mensaje mensajeOk";
+
+  } else {
+
+    mensaje.className =
+      "mensaje mensajeInfo";
+
+  }
+
+
+  mensaje.innerHTML =
+    texto;
 }
+
 
 
 function ocultarMensaje() {
 
-  document.getElementById("mensaje")
-    .style.display = "none";
+  document
+    .getElementById("mensaje")
+    .style.display =
+      "none";
+
 }
+
 
 
 // =====================================================
 // BÚSQUEDA MANUAL
 // =====================================================
 
+
 function buscarManual() {
 
   const codigo =
-    document.getElementById("busqueda")
+    document
+      .getElementById("busqueda")
       .value
       .trim();
+
 
   if (!codigo) {
 
@@ -372,309 +585,1490 @@ function buscarManual() {
     );
 
     return;
+
   }
 
+
   buscarProducto(codigo);
+
 }
 
 
-document.getElementById("busqueda")
-  .addEventListener("keydown", function(event) {
 
-    if (event.key === "Enter") {
-      buscarManual();
+document
+  .getElementById("busqueda")
+  .addEventListener(
+    "keydown",
+    function(event) {
+
+      if (
+        event.key ===
+        "Enter"
+      ) {
+
+        buscarManual();
+
+      }
+
     }
+  );
 
-  });
 
 
 // =====================================================
-// CONSULTA A TRIMA MEDIANTE JSONP
+// JSONP
+// LECTURA DESDE APPS SCRIPT
 // =====================================================
 
-function buscarProducto(codigo) {
+
+function consultarJSONP(codigo) {
+
+  return new Promise(
+    function(
+      resolve,
+      reject
+    ) {
+
+
+      const callback =
+        "trimaCallback_" +
+        Date.now() +
+        "_" +
+        Math.floor(
+          Math.random() *
+          10000
+        );
+
+
+      const script =
+        document.createElement(
+          "script"
+        );
+
+
+      let terminado =
+        false;
+
+
+      const timeout =
+        setTimeout(
+          function() {
+
+            limpiar();
+
+            reject(
+              new Error(
+                "Tiempo de espera agotado."
+              )
+            );
+
+          },
+          12000
+        );
+
+
+
+      function limpiar() {
+
+        if (terminado) {
+          return;
+        }
+
+
+        terminado =
+          true;
+
+
+        clearTimeout(
+          timeout
+        );
+
+
+        try {
+
+          delete window[
+            callback
+          ];
+
+        } catch(e) {}
+
+
+        if (
+          script.parentNode
+        ) {
+
+          script
+            .parentNode
+            .removeChild(
+              script
+            );
+
+        }
+
+      }
+
+
+
+      window[
+        callback
+      ] =
+        function(datos) {
+
+
+          if (terminado) {
+            return;
+          }
+
+
+          terminado =
+            true;
+
+
+          clearTimeout(
+            timeout
+          );
+
+
+          try {
+
+            delete window[
+              callback
+            ];
+
+          } catch(e) {}
+
+
+          if (
+            script.parentNode
+          ) {
+
+            script
+              .parentNode
+              .removeChild(
+                script
+              );
+
+          }
+
+
+          resolve(datos);
+
+        };
+
+
+
+      script.onerror =
+        function() {
+
+          limpiar();
+
+          reject(
+            new Error(
+              "No fue posible conectar con TRIMA."
+            )
+          );
+
+        };
+
+
+
+      script.src =
+        API_URL +
+
+        "?accion=buscar" +
+
+        "&codigo=" +
+        encodeURIComponent(
+          codigo
+        ) +
+
+        "&callback=" +
+        encodeURIComponent(
+          callback
+        ) +
+
+        "&_=" +
+        Date.now();
+
+
+
+      document
+        .body
+        .appendChild(
+          script
+        );
+
+
+    }
+  );
+
+}
+
+
+
+// =====================================================
+// BUSCAR PRODUCTO
+// =====================================================
+
+
+async function buscarProducto(
+  codigo
+) {
+
 
   detenerScanner();
 
+
   ocultarMensaje();
 
-  document.getElementById("visor")
-    .style.display = "none";
 
-  document.getElementById("estadoScanner")
-    .style.display = "none";
+  document
+    .getElementById("visor")
+    .style.display =
+      "none";
 
-  document.getElementById("producto")
-    .style.display = "none";
 
-  document.getElementById("busqueda")
-    .value = codigo;
+  document
+    .getElementById(
+      "estadoScanner"
+    )
+    .style.display =
+      "none";
+
+
+  document
+    .getElementById(
+      "producto"
+    )
+    .style.display =
+      "none";
+
+
+  document
+    .getElementById(
+      "busqueda"
+    )
+    .value =
+      codigo;
+
 
   mostrarMensaje(
     "🔎 Buscando producto en TRIMA..."
   );
 
 
-  const callback =
-    "trimaCallback_" + Date.now();
+  try {
 
 
-  const script =
-    document.createElement("script");
-
-
-  const timeout =
-    setTimeout(function() {
-
-      limpiarJSONP();
-
-      mostrarMensaje(
-        "No fue posible consultar TRIMA. Intenta nuevamente.",
-        "error"
+    const datos =
+      await consultarJSONP(
+        codigo
       );
 
-    }, 12000);
 
+    if (
+      !datos ||
+      datos.ok !== true
+    ) {
 
-  function limpiarJSONP() {
+      mostrarMensaje(
 
-    clearTimeout(timeout);
+        "Error al consultar el producto." +
 
-    try {
-      delete window[callback];
-    } catch(e) {}
+        (
+          datos &&
+          datos.error
+            ?
+          "<br>" +
+          escaparHTML(
+            datos.error
+          )
+            :
+          ""
+        ),
 
-    if (script.parentNode) {
-      script.parentNode.removeChild(script);
+        "error"
+
+      );
+
+      return;
+
     }
+
+
+
+    if (
+      !datos.encontrado
+    ) {
+
+      mostrarMensaje(
+
+        "❌ Producto no encontrado." +
+
+        "<br><br>" +
+
+        "Código buscado: <strong>" +
+
+        escaparHTML(
+          codigo
+        ) +
+
+        "</strong>",
+
+        "error"
+
+      );
+
+      return;
+
+    }
+
+
+
+    codigoActual =
+      codigo;
+
+
+    productoActual =
+      datos.producto;
+
+
+    mostrarProducto(
+      datos.producto
+    );
+
+
+  } catch(error) {
+
+
+    mostrarMensaje(
+
+      "No fue posible consultar TRIMA." +
+
+      "<br>" +
+
+      escaparHTML(
+        error.message
+      ),
+
+      "error"
+
+    );
+
   }
 
-
-  window[callback] =
-    function(datos) {
-
-      limpiarJSONP();
-
-      if (!datos || datos.ok !== true) {
-
-        mostrarMensaje(
-          "Error al consultar el producto.",
-          "error"
-        );
-
-        return;
-      }
-
-
-      if (!datos.encontrado) {
-
-        mostrarMensaje(
-          "❌ Producto no encontrado.<br><br>" +
-          "Código buscado: <strong>" +
-          escaparHTML(codigo) +
-          "</strong>",
-          "error"
-        );
-
-        return;
-      }
-
-
-      mostrarProducto(datos.producto);
-    };
-
-
-  script.onerror =
-    function() {
-
-      limpiarJSONP();
-
-      mostrarMensaje(
-        "No fue posible conectar con TRIMA.",
-        "error"
-      );
-    };
-
-
-  script.src =
-    API_URL +
-    "?accion=buscar" +
-    "&codigo=" +
-    encodeURIComponent(codigo) +
-    "&callback=" +
-    encodeURIComponent(callback) +
-    "&_=" +
-    Date.now();
-
-
-  document.body.appendChild(script);
 }
+
 
 
 // =====================================================
 // MOSTRAR PRODUCTO
 // =====================================================
 
+
 function mostrarProducto(p) {
+
 
   ocultarMensaje();
 
-  document.getElementById("producto")
-    .style.display = "block";
 
-  document.getElementById("descripcion")
+  productoActual =
+    p;
+
+
+  document
+    .getElementById(
+      "producto"
+    )
+    .style.display =
+      "block";
+
+
+  document
+    .getElementById(
+      "descripcion"
+    )
     .textContent =
       p.descripcion || "";
 
-  document.getElementById("codigoProveedor")
+
+  document
+    .getElementById(
+      "codigoProveedor"
+    )
     .textContent =
       p.codigoProveedor || "—";
 
-  document.getElementById("codigoBarras")
+
+  document
+    .getElementById(
+      "codigoBarras"
+    )
     .textContent =
       p.codigoBarras || "—";
 
-  document.getElementById("idERP")
+
+  document
+    .getElementById(
+      "idERP"
+    )
     .textContent =
       p.id || "—";
 
-  document.getElementById("stockERP")
+
+  document
+    .getElementById(
+      "stockERP"
+    )
     .textContent =
+
       p.stockERP === ""
-        ? "0"
-        : p.stockERP;
+        ?
+      "0"
+        :
+      p.stockERP;
+
 
 
   const estado =
-    document.getElementById("estadoArticulo");
+    document.getElementById(
+      "estadoArticulo"
+    );
 
 
-  if (p.desactivado === true) {
+
+  if (
+    p.desactivado === true
+  ) {
+
 
     estado.className =
       "estadoDesactivado";
 
+
     estado.innerHTML =
-      "🔴 ARTÍCULO DESACTIVADO<br>" +
+
+      "🔴 ARTÍCULO DESACTIVADO" +
+
+      "<br>" +
+
       "Debe contarse físicamente.";
 
+
   } else {
+
 
     estado.className =
       "estadoActivo";
 
+
     estado.innerHTML =
       "🟢 ARTÍCULO ACTIVO";
+
   }
 
 
-  document.getElementById("producto")
+
+  const previo =
+    document.getElementById(
+      "conteoPrevio"
+    );
+
+
+
+  if (
+    String(
+      p.verificado || ""
+    ).toUpperCase() ===
+    "SI"
+  ) {
+
+
+    previo.style.display =
+      "block";
+
+
+    previo.innerHTML =
+
+      "<strong>Este artículo ya fue verificado.</strong>" +
+
+      "<br>" +
+
+      "Conteo registrado: " +
+
+      escaparHTML(
+        p.conteoFisico || "0"
+      ) +
+
+      " · Diferencia: " +
+
+      formatearDiferencia(
+        p.diferencia
+      ) +
+
+      " · Estado: " +
+
+      escaparHTML(
+        p.estadoConteo || ""
+      );
+
+
+  } else {
+
+
+    previo.style.display =
+      "none";
+
+
+    previo.innerHTML =
+      "";
+
+  }
+
+
+
+  document
+    .getElementById(
+      "conteoFisico"
+    )
+    .value =
+      "";
+
+
+  document
+    .getElementById(
+      "resultadoConteo"
+    )
+    .style.display =
+      "none";
+
+
+  document
+    .getElementById(
+      "btnSiguiente"
+    )
+    .style.display =
+      "none";
+
+
+  habilitarBotones(
+    true
+  );
+
+
+  document
+    .getElementById(
+      "producto"
+    )
     .scrollIntoView({
-      behavior: "smooth",
-      block: "start"
+
+      behavior:
+        "smooth",
+
+      block:
+        "start"
+
     });
+
 }
+
+
+
+// =====================================================
+// POST HACIA APPS SCRIPT
+// =====================================================
+//
+// El navegador envía la escritura.
+// Después NO damos por hecho que se guardó.
+// Volvemos a consultar el producto y comprobamos
+// el registro directamente contra TRIMA.
+//
+// =====================================================
+
+
+async function enviarPost(
+  parametros
+) {
+
+
+  const body =
+    new URLSearchParams();
+
+
+  Object
+    .keys(
+      parametros
+    )
+    .forEach(
+      function(clave) {
+
+        body.append(
+          clave,
+          parametros[
+            clave
+          ]
+        );
+
+      }
+    );
+
+
+
+  await fetch(
+
+    API_URL,
+
+    {
+
+      method:
+        "POST",
+
+      mode:
+        "no-cors",
+
+      headers: {
+
+        "Content-Type":
+          "application/x-www-form-urlencoded;charset=UTF-8"
+
+      },
+
+      body:
+        body.toString()
+
+    }
+
+  );
+
+}
+
+
+
+// =====================================================
+// CONFIRMAR QUE COINCIDE CON ERP
+// =====================================================
+
+
+async function confirmarCoincidencia() {
+
+
+  if (
+    !productoActual ||
+    !codigoActual
+  ) {
+
+    return;
+
+  }
+
+
+  const stock =
+    Number(
+      productoActual.stockERP
+    ) || 0;
+
+
+
+  const confirmar =
+    window.confirm(
+
+      "¿Confirmas que el conteo físico es " +
+
+      stock +
+
+      " y coincide con el Stock ERP?"
+
+    );
+
+
+
+  if (!confirmar) {
+    return;
+  }
+
+
+
+  habilitarBotones(
+    false
+  );
+
+
+  mostrarMensaje(
+    "💾 Guardando confirmación..."
+  );
+
+
+
+  try {
+
+
+    await enviarPost({
+
+      accion:
+        "confirmar",
+
+      codigo:
+        codigoActual
+
+    });
+
+
+
+    await verificarGuardado(
+      stock
+    );
+
+
+  } catch(error) {
+
+
+    habilitarBotones(
+      true
+    );
+
+
+    mostrarMensaje(
+
+      "No fue posible guardar el conteo." +
+
+      "<br>" +
+
+      escaparHTML(
+        error.message
+      ),
+
+      "error"
+
+    );
+
+  }
+
+}
+
+
+
+// =====================================================
+// GUARDAR CONTEO FÍSICO
+// =====================================================
+
+
+async function guardarConteoFisico() {
+
+
+  if (
+    !productoActual ||
+    !codigoActual
+  ) {
+
+    return;
+
+  }
+
+
+
+  const campo =
+    document.getElementById(
+      "conteoFisico"
+    );
+
+
+  const texto =
+    String(
+      campo.value
+    ).trim();
+
+
+
+  if (
+    texto === ""
+  ) {
+
+
+    mostrarMensaje(
+      "Captura la cantidad física encontrada.",
+      "error"
+    );
+
+
+    campo.focus();
+
+
+    return;
+
+  }
+
+
+
+  const conteo =
+    Number(texto);
+
+
+
+  if (
+    !Number.isFinite(
+      conteo
+    ) ||
+    conteo < 0
+  ) {
+
+
+    mostrarMensaje(
+      "El conteo físico debe ser un número igual o mayor a 0.",
+      "error"
+    );
+
+
+    campo.focus();
+
+
+    return;
+
+  }
+
+
+
+  const confirmar =
+    window.confirm(
+
+      "¿Guardar conteo físico de " +
+
+      conteo +
+
+      "?"
+
+    );
+
+
+
+  if (!confirmar) {
+    return;
+  }
+
+
+
+  habilitarBotones(
+    false
+  );
+
+
+  mostrarMensaje(
+    "💾 Guardando conteo físico..."
+  );
+
+
+
+  try {
+
+
+    await enviarPost({
+
+      accion:
+        "guardar",
+
+      codigo:
+        codigoActual,
+
+      conteo:
+        conteo
+
+    });
+
+
+
+    await verificarGuardado(
+      conteo
+    );
+
+
+  } catch(error) {
+
+
+    habilitarBotones(
+      true
+    );
+
+
+    mostrarMensaje(
+
+      "No fue posible guardar el conteo." +
+
+      "<br>" +
+
+      escaparHTML(
+        error.message
+      ),
+
+      "error"
+
+    );
+
+  }
+
+}
+
+
+
+// =====================================================
+// VERIFICAR QUE REALMENTE SE GUARDÓ
+// =====================================================
+
+
+async function verificarGuardado(
+  conteoEsperado
+) {
+
+
+  let ultimoError =
+    null;
+
+
+
+  for (
+    let intento = 0;
+    intento < 5;
+    intento++
+  ) {
+
+
+    await esperar(
+      900
+    );
+
+
+    try {
+
+
+      const datos =
+        await consultarJSONP(
+          codigoActual
+        );
+
+
+
+      if (
+
+        datos &&
+
+        datos.ok === true &&
+
+        datos.encontrado === true &&
+
+        String(
+          datos.producto.verificado ||
+          ""
+        ).toUpperCase() ===
+          "SI" &&
+
+        Number(
+          datos.producto.conteoFisico
+        ) ===
+          Number(
+            conteoEsperado
+          )
+
+      ) {
+
+
+        productoActual =
+          datos.producto;
+
+
+        mostrarResultadoGuardado(
+          datos.producto
+        );
+
+
+        return;
+
+      }
+
+
+    } catch(error) {
+
+
+      ultimoError =
+        error;
+
+    }
+
+  }
+
+
+
+  habilitarBotones(
+    true
+  );
+
+
+  mostrarMensaje(
+
+    "El envío se realizó, pero no pude confirmar todavía la actualización en TRIMA." +
+
+    (
+      ultimoError
+        ?
+      "<br>" +
+      escaparHTML(
+        ultimoError.message
+      )
+        :
+      ""
+    ) +
+
+    "<br><br>" +
+
+    "Vuelve a buscar el producto antes de repetir el registro.",
+
+    "error"
+
+  );
+
+}
+
+
+
+// =====================================================
+// RESULTADO DEL CONTEO
+// =====================================================
+
+
+function mostrarResultadoGuardado(
+  p
+) {
+
+
+  ocultarMensaje();
+
+
+  const stock =
+    Number(
+      p.stockERP
+    ) || 0;
+
+
+  const conteo =
+    Number(
+      p.conteoFisico
+    ) || 0;
+
+
+  const diferencia =
+    Number(
+      p.diferencia
+    ) || 0;
+
+
+  const resultado =
+    document.getElementById(
+      "resultadoConteo"
+    );
+
+
+  resultado.style.display =
+    "block";
+
+
+
+  if (
+    diferencia === 0
+  ) {
+
+
+    resultado.className =
+      "resultadoConteo resultadoOK";
+
+
+    resultado.innerHTML =
+
+      '<div class="resultadoTitulo">' +
+
+      '✅ CONTEO GUARDADO — OK' +
+
+      '</div>' +
+
+      '<div class="resultadoNumeros">' +
+
+      'Stock ERP: <strong>' +
+      stock +
+      '</strong><br>' +
+
+      'Conteo físico: <strong>' +
+      conteo +
+      '</strong><br>' +
+
+      'Diferencia: <strong>0</strong>' +
+
+      '</div>';
+
+
+  } else {
+
+
+    resultado.className =
+      "resultadoConteo resultadoDiferencia";
+
+
+    resultado.innerHTML =
+
+      '<div class="resultadoTitulo">' +
+
+      '⚠️ CONTEO GUARDADO — DIFERENCIA' +
+
+      '</div>' +
+
+      '<div class="resultadoNumeros">' +
+
+      'Stock ERP: <strong>' +
+      stock +
+      '</strong><br>' +
+
+      'Conteo físico: <strong>' +
+      conteo +
+      '</strong><br>' +
+
+      'Diferencia: <strong>' +
+
+      formatearDiferencia(
+        diferencia
+      ) +
+
+      '</strong>' +
+
+      '</div>';
+
+  }
+
+
+
+  document
+    .getElementById(
+      "conteoPrevio"
+    )
+    .style.display =
+      "block";
+
+
+  document
+    .getElementById(
+      "conteoPrevio"
+    )
+    .innerHTML =
+      "<strong>Registro verificado en TRIMA.</strong>";
+
+
+
+  document
+    .getElementById(
+      "btnSiguiente"
+    )
+    .style.display =
+      "block";
+
+
+  habilitarBotones(
+    false
+  );
+
+
+  resultado.scrollIntoView({
+
+    behavior:
+      "smooth",
+
+    block:
+      "center"
+
+  });
+
+}
+
+
+
+// =====================================================
+// HABILITAR / BLOQUEAR BOTONES
+// =====================================================
+
+
+function habilitarBotones(
+  habilitar
+) {
+
+
+  document
+    .getElementById(
+      "btnCoincide"
+    )
+    .disabled =
+      !habilitar;
+
+
+  document
+    .getElementById(
+      "btnGuardar"
+    )
+    .disabled =
+      !habilitar;
+
+
+  document
+    .getElementById(
+      "conteoFisico"
+    )
+    .disabled =
+      !habilitar;
+
+}
+
+
+
+// =====================================================
+// SIGUIENTE PRODUCTO
+// =====================================================
+
+
+function siguienteProducto() {
+
+
+  productoActual =
+    null;
+
+
+  codigoActual =
+    "";
+
+
+  document
+    .getElementById(
+      "busqueda"
+    )
+    .value =
+      "";
+
+
+  document
+    .getElementById(
+      "producto"
+    )
+    .style.display =
+      "none";
+
+
+  document
+    .getElementById(
+      "resultadoConteo"
+    )
+    .style.display =
+      "none";
+
+
+  document
+    .getElementById(
+      "btnSiguiente"
+    )
+    .style.display =
+      "none";
+
+
+  ocultarMensaje();
+
+
+  window.scrollTo({
+
+    top:
+      0,
+
+    behavior:
+      "smooth"
+
+  });
+
+
+
+  setTimeout(
+    function() {
+
+      iniciarScanner();
+
+    },
+    350
+  );
+
+}
+
 
 
 // =====================================================
 // SCANNER
-// ESTA ES LA CONFIGURACIÓN QUE YA FUNCIONÓ EN IPHONE
+// CONFIGURACIÓN QUE YA FUNCIONÓ EN IPHONE
 // =====================================================
+
 
 function detenerScanner() {
 
+
   try {
 
-    if (controles) {
+
+    if (
+      controles
+    ) {
+
+
       controles.stop();
-      controles = null;
+
+
+      controles =
+        null;
+
     }
+
 
   } catch(e) {}
 
 
-  if (stream) {
+
+  if (
+    stream
+  ) {
+
 
     stream
       .getTracks()
       .forEach(
-        track => track.stop()
+
+        track =>
+          track.stop()
+
       );
 
-    stream = null;
+
+    stream =
+      null;
+
   }
+
 }
+
 
 
 async function iniciarScanner() {
 
+
   detenerScanner();
 
-  detectado = false;
+
+  detectado =
+    false;
+
 
   ocultarMensaje();
 
-  document.getElementById("producto")
-    .style.display = "none";
+
+  document
+    .getElementById(
+      "producto"
+    )
+    .style.display =
+      "none";
+
 
 
   const video =
-    document.getElementById("video");
+    document.getElementById(
+      "video"
+    );
+
 
   const visor =
-    document.getElementById("visor");
+    document.getElementById(
+      "visor"
+    );
+
 
   const estado =
-    document.getElementById("estadoScanner");
+    document.getElementById(
+      "estadoScanner"
+    );
 
 
-  visor.style.display = "block";
-  estado.style.display = "block";
+
+  visor.style.display =
+    "block";
+
+
+  estado.style.display =
+    "block";
+
 
   estado.innerHTML =
     "📷 Abriendo cámara trasera...";
 
 
+
   try {
 
+
     stream =
-      await navigator.mediaDevices.getUserMedia({
+      await navigator
+        .mediaDevices
+        .getUserMedia({
 
-        audio: false,
 
-        video: {
+          audio:
+            false,
 
-          facingMode: {
-            ideal: "environment"
-          },
 
-          width: {
-            ideal: 1920
-          },
+          video: {
 
-          height: {
-            ideal: 1080
-          },
 
-          frameRate: {
-            ideal: 30
+            facingMode: {
+              ideal:
+                "environment"
+            },
+
+
+            width: {
+              ideal:
+                1920
+            },
+
+
+            height: {
+              ideal:
+                1080
+            },
+
+
+            frameRate: {
+              ideal:
+                30
+            }
+
+
           }
 
-        }
 
-      });
+        });
 
 
-    video.srcObject = stream;
+
+    video.srcObject =
+      stream;
+
 
     await video.play();
 
 
+
     const track =
-      stream.getVideoTracks()[0];
+      stream
+        .getVideoTracks()[0];
 
 
-    let capabilities = {};
+
+    let capabilities =
+      {};
+
 
 
     if (
@@ -682,77 +2076,128 @@ async function iniciarScanner() {
       "function"
     ) {
 
+
       capabilities =
         track.getCapabilities();
+
     }
 
 
-    const advanced = [];
+
+    const advanced =
+      [];
+
 
 
     if (
+
       capabilities.focusMode &&
+
       Array.isArray(
         capabilities.focusMode
       ) &&
+
       capabilities.focusMode.includes(
         "continuous"
       )
+
     ) {
 
+
       advanced.push({
-        focusMode: "continuous"
+
+        focusMode:
+          "continuous"
+
       });
+
     }
+
 
 
     if (
+
       capabilities.zoom &&
+
       typeof capabilities.zoom.min ===
         "number" &&
+
       typeof capabilities.zoom.max ===
         "number"
+
     ) {
+
 
       let zoomDeseado =
         Math.max(
+
           capabilities.zoom.min,
+
           1.2
+
         );
+
 
       zoomDeseado =
         Math.min(
+
           zoomDeseado,
+
           capabilities.zoom.max
+
         );
 
+
       advanced.push({
-        zoom: zoomDeseado
+
+        zoom:
+          zoomDeseado
+
       });
+
     }
 
 
-    if (advanced.length > 0) {
+
+    if (
+      advanced.length > 0
+    ) {
+
 
       try {
 
+
         await track.applyConstraints({
-          advanced: advanced
+
+          advanced:
+            advanced
+
         });
+
 
       } catch(e) {
 
+
         console.log(
+
           "No se aplicaron constraints avanzados:",
+
           e
+
         );
+
       }
+
     }
 
 
+
     estado.innerHTML =
+
       "🔎 <strong>Lector activo</strong><br>" +
+
       "Mantén el código dentro del marco.";
+
 
 
     const lector =
@@ -760,105 +2205,229 @@ async function iniciarScanner() {
         .BrowserMultiFormatReader();
 
 
+
     controles =
       await lector.decodeFromStream(
 
+
         stream,
+
 
         video,
 
+
         function(
+
           resultadoZXing,
+
           error,
+
           controlActual
+
         ) {
 
+
           if (
+
             !resultadoZXing ||
+
             detectado
+
           ) {
+
             return;
+
           }
+
 
 
           const texto =
-            resultadoZXing.getText();
+            resultadoZXing
+              .getText();
+
 
 
           if (!texto) {
+
             return;
+
           }
 
 
-          detectado = true;
+
+          detectado =
+            true;
+
 
 
           estado.innerHTML =
+
             "🎯 <strong>Código leído:</strong><br>" +
-            escaparHTML(texto);
+
+            escaparHTML(
+              texto
+            );
+
 
 
           try {
 
+
             controlActual.stop();
+
 
           } catch(e) {}
 
 
+
           setTimeout(
+
             function() {
 
+
               detenerScanner();
+
 
               visor.style.display =
                 "none";
 
+
               estado.style.display =
                 "none";
 
-              buscarProducto(texto);
+
+              buscarProducto(
+                texto
+              );
+
 
             },
+
             300
+
           );
 
+
         }
+
 
       );
 
 
+
   } catch(error) {
 
-    console.error(error);
+
+    console.error(
+      error
+    );
+
 
     estado.innerHTML =
+
       "❌ No fue posible iniciar el lector.<br><br>" +
-      escaparHTML(error.name) +
+
+      escaparHTML(
+        error.name
+      ) +
+
       ": " +
-      escaparHTML(error.message);
+
+      escaparHTML(
+        error.message
+      );
+
   }
+
 }
 
 
+
 // =====================================================
-// SEGURIDAD DE TEXTO
+// UTILIDADES
 // =====================================================
 
-function escaparHTML(valor) {
 
-  return String(valor)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+function escaparHTML(
+  valor
+) {
+
+
+  return String(
+    valor
+  )
+
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+
+    .replace(
+      /</g,
+      "&lt;"
+    )
+
+    .replace(
+      />/g,
+      "&gt;"
+    )
+
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
 }
+
+
+
+function formatearDiferencia(
+  valor
+) {
+
+
+  const n =
+    Number(
+      valor
+    ) || 0;
+
+
+  return n > 0
+    ?
+    "+" + n
+    :
+    String(n);
+
+}
+
+
+
+function esperar(ms) {
+
+  return new Promise(
+
+    resolve =>
+      setTimeout(
+        resolve,
+        ms
+      )
+
+  );
+
+}
+
 
 
 window.addEventListener(
   "pagehide",
   detenerScanner
 );
+
 
 </script>
 
