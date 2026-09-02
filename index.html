@@ -1293,9 +1293,9 @@ async function confirmarCoincidencia() {
   );
 
 
-  mostrarMensaje(
-    "💾 Guardando confirmación..."
-  );
+ mostrarMensaje(
+  "⏳ <strong>GUARDANDO EN TRIMA...</strong><br>No cierres ni vuelvas a tocar el botón."
+);
 
 
 
@@ -1452,8 +1452,8 @@ async function guardarConteoFisico() {
 
 
   mostrarMensaje(
-    "💾 Guardando conteo físico..."
-  );
+  "⏳ <strong>GUARDANDO CONTEO...</strong><br>No cierres ni vuelvas a tocar el botón."
+);
 
 
 
@@ -1531,9 +1531,8 @@ async function verificarGuardado(
 
 
     await esperar(
-      900
-    );
-
+  intento === 0 ? 250 : 450
+);
 
     try {
 
